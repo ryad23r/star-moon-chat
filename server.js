@@ -601,11 +601,11 @@ io.on('connection', (socket) => {
 
     // حفظ الرتبة في Supabase
     if (target.email) await dbUpdateRole(target.email, data.role);
-
     const s = io.sockets.sockets.get(data.userId);
     if (s) {
-      s.emit('user:promoted', { role: data.role, promotedBy: admin.name, message: `تمت ترقيتك إلى ${getRoleName(data.role)}` });
+      s.emit('user:promoted',     { role: data.role, promotedBy: admin.name, message: `تمت ترقيتك إلى ${getRoleName(data.role)} بواسطة ${admin.name}` });
       s.emit('user:data:updated', { role: data.role, name: target.name, color: target.color, nameStyle: target.nameStyle });
+      s.emit('user:role:force',   { role: data.role, roleName: getRoleName(data.role) });
     }
     socket.emit('admin:success', { message: `تم ترقية ${target.name} إلى ${getRoleName(data.role)}` });
     updateOnlineUsers();
@@ -613,7 +613,31 @@ io.on('connection', (socket) => {
     console.log(`⭐ ${admin.name}: ${target.name} ${oldRole} → ${data.role}`);
   });
 
-  // ─── قطع الاتصال ────────────────────────────────────────────────
+  // ─── تحديث الملف الشخصي والصورة ──────────────────────────────
+  socket.on('profile:update', async (data) => {
+    if (!currentUser) return;
+    const avatar    = typeof data.avatar    === 'string' ? data.avatar.slice(0, 500000) : null;
+    const color     = /^#[0-9a-fA-F]{3,6}$/.test(data.color)     ? data.color     : null;
+    const nameStyle = ['neon','normal','bold','shadow'].includes(data.nameStyle) ? data.nameStyle : null;
+
+    if (avatar)    currentUser.avatar    = avatar;
+    if (color)     currentUser.color     = color;
+    if (nameStyle) currentUser.nameStyle = nameStyle;
+    connectedUsers.set(socket.id, currentUser);
+
+    if (currentUser.email) {
+      const upd = { email: currentUser.email, name: currentUser.name, role: currentUser.role };
+      if (avatar)    upd.avatar     = avatar;
+      if (color)     upd.color      = color;
+      if (nameStyle) upd.name_style = nameStyle;
+      await dbUpsertUser(upd);
+    }
+
+    updateOnlineUsers();
+    socket.emit('profile:saved', { avatar, color, nameStyle });
+    console.log(`👤 ${currentUser.name} حدّث بروفايله`);
+  });
+
   socket.on('disconnect', () => {
     if (currentUser) {
       currentUser.online = false;
@@ -658,3 +682,9 @@ process.on('SIGTERM', () => {
   console.log('🛑 إيقاف نظيف...');
   server.close(() => process.exit(0));
 });
+
+// ══════════════════════════════════════════
+//  إضافات الإصلاح — تُضاف بعد io.on('connection')
+// ══════════════════════════════════════════
+// ملاحظة: هذا الكود يُضاف داخل io.on('connection') في النسخة الكاملة
+// لكن هنا نستخدمه كـ patch مؤقت عبر middleware

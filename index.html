@@ -1397,6 +1397,29 @@ function connectToServer() {
     }
 });
 
+    // ✅ إصلاح: حدث جديد لضمان وصول الترقية
+    socket.on('user:role:force', (data) => {
+        if (!state.user) return;
+        state.user.role = data.role;
+        localStorage.setItem('user', JSON.stringify(state.user));
+        checkPermissions();
+        renderOnlineUsers();
+        render();
+        showToast(`🎉 تمت ترقيتك إلى ${data.roleName || data.role}!`, 'success');
+        console.log('✅ user:role:force — الدور الجديد:', data.role);
+    });
+
+    // ✅ تأكيد حفظ البروفايل من السيرفر
+    socket.on('profile:saved', (data) => {
+        if (!state.user) return;
+        if (data.avatar)    { state.user.avatar    = data.avatar;    }
+        if (data.color)     { state.user.color     = data.color;     }
+        if (data.nameStyle) { state.user.nameStyle = data.nameStyle; }
+        localStorage.setItem('user', JSON.stringify(state.user));
+        console.log('✅ profile:saved من السيرفر');
+    });
+
+
    // تحديث النقاط
     socket.on('user:points:updated', (data) => {
      console.log('🔄 تحديث النقاط:', data);
@@ -1461,7 +1484,8 @@ function toggle(sidebarId) {
 function switchRoom(room) {
     if (room === state.room) return;
     
-    if (room === 'vip' && !state.isOwner && !state.isAdmin && state.user.role !== 'vip') {
+    const myRole = state.user ? state.user.role : 'visitor';
+    if (room === 'vip' && !['owner','admin','vip'].includes(myRole)) {
         showToast('⚠️ تحتاج عضوية VIP للدخول لهذه الغرفة', 'error');
         return;
     }
@@ -1928,7 +1952,11 @@ function setNameColor(color) {
 
 function saveProfile() {
     if (!state.user) return;
-    
+    // ✅ الزوار لا يمكنهم تغيير البروفايل
+    if (state.user.role === 'visitor') {
+        showToast('⚠️ الزوار لا يمكنهم تعديل البروفايل — سجّل حساباً أولاً', 'error');
+        return;
+    }
     state.user.font = document.getElementById('profileFont').value;
     
     const avatarInput = document.getElementById('changeAvatar');
@@ -1946,6 +1974,14 @@ function saveProfile() {
 
 function finishSaveProfile() {
     localStorage.setItem('user', JSON.stringify(state.user));
+    // ✅ إرسال التحديثات للسيرفر ليراها الجميع
+    if (socket && state.connected) {
+        socket.emit('profile:update', {
+            avatar:    state.user.avatar    || null,
+            color:     state.user.color     || null,
+            nameStyle: state.user.nameStyle || null
+        });
+    }
     closeProfile();
     renderOnlineUsers();
     render();
@@ -1982,6 +2018,10 @@ function closeUserProfile() {
 }
 
 function sendFriendRequest() {
+    if (state.user && state.user.role === 'visitor') {
+        showToast('⚠️ الزوار لا يمكنهم إرسال طلبات صداقة — سجّل حساباً أولاً', 'error');
+        return;
+    }
     if (!state.selectedUser || !state.user || !state.connected) return;
     
     socket.emit('friend:request', { to: state.selectedUser.id });
