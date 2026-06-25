@@ -1,0 +1,22 @@
+services:
+  - type: web
+    name: najma-qamar-chat
+    env: node
+    region: frankfurt
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: OWNER_EMAIL
+        sync: false
+      - key: OWNER_SECRET
+        sync: false
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_KEY
+        sync: false
+      - key: ALLOWED_ORIGIN
+        value: "*"
