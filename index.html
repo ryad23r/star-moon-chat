@@ -1,0 +1,2957 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>شات نجمة وقمر – النسخة المتكاملة</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+<script>
+tailwind.config = {
+  theme: {
+    extend: {
+      colors: {
+        'dark': '#0f172a',
+        'darker': '#020617',
+      }
+    }
+  }
+}
+</script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+<link href="https://fonts.googleapis.com/css2?family=Cairo&family=Amiri&family=Changa&family=Tajawal&display=swap" rel="stylesheet">
+<style>
+body {
+  background: #0f172a;
+  color: #fff;
+  font-family: 'Cairo', sans-serif;
+  overflow-x: hidden;
+}
+.font-cairo{font-family:'Cairo',sans-serif}
+.font-amiri{font-family:'Amiri',serif}
+.font-changa{font-family:'Changa',sans-serif}
+.font-tajawal{font-family:'Tajawal',sans-serif}
+.neon-text {
+  text-shadow: 0 0 5px currentColor, 0 0 15px currentColor, 0 0 20px currentColor;
+}
+.normal-text {
+  text-shadow: none;
+}
+.sidebar {
+  position: fixed;
+  top: 0;
+  bottom: 0;
+  width: 280px;
+  background: #020617;
+  z-index: 50;
+  overflow: auto;
+  transition: transform 0.3s ease;
+}
+.sidebar-right {
+  right: 0;
+  transform: translateX(100%);
+}
+.sidebar-left {
+  left: 0;
+  transform: translateX(-100%);
+}
+.sidebar.open {
+  transform: translateX(0);
+}
+.msg {
+  margin-bottom: 12px;
+  animation: fadeIn 0.3s ease;
+}
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.private-chat {
+  position: fixed;
+  bottom: 70px;
+  right: 20px;
+  width: 350px;
+  height: 450px;
+  background: #1e293b;
+  border-radius: 10px;
+  box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+  display: none;
+  flex-direction: column;
+  z-index: 100;
+}
+.private-chat.minimized {
+  height: 50px;
+}
+.private-chat.active {
+  display: flex;
+}
+.badge-owner { background: linear-gradient(45deg, #ff0000, #ff8000); }
+.badge-admin { background: linear-gradient(45deg, #ff0080, #8000ff); }
+.badge-moderator { background: linear-gradient(45deg, #0080ff, #00ff80); }
+.badge-member { background: linear-gradient(45deg, #808080, #a0a0a0); }
+.badge-vip { background: linear-gradient(45deg, #ffd700, #ff8c00); }
+.typing-indicator {
+  display: inline-block;
+  animation: typing 1.5s infinite;
+}
+@keyframes typing {
+  0%, 100% { opacity: 0.5; }
+  50% { opacity: 1; }
+}
+.emoji-picker {
+  position: absolute;
+  bottom: 100%;
+  left: 0;
+  background: #1e293b;
+  border-radius: 10px;
+  padding: 10px;
+  display: none;
+  grid-template-columns: repeat(8, 1fr);
+  gap: 5px;
+  max-height: 200px;
+  overflow-y: auto;
+  z-index: 1000;
+}
+.status-indicator {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  display: inline-block;
+  margin-left: 5px;
+}
+.status-online { background-color: #10b981; }
+.status-typing { background-color: #f59e0b; animation: pulse 1.5s infinite; }
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+.status-offline { background-color: #6b7280; }
+.status-muted { background-color: #ef4444; }
+.notification-badge {
+  position: absolute;
+  top: -5px;
+  right: -5px;
+  background: #ef4444;
+  color: white;
+  border-radius: 50%;
+  width: 18px;
+  height: 18px;
+  font-size: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.notification-item {
+  border-right: 4px solid;
+  margin-bottom: 10px;
+  padding: 10px;
+  border-radius: 5px;
+}
+.notification-info { border-color: #3b82f6; background: rgba(59, 130, 246, 0.1); }
+.notification-success { border-color: #10b981; background: rgba(16, 185, 129, 0.1); }
+.notification-warning { border-color: #f59e0b; background: rgba(245, 158, 11, 0.1); }
+.notification-error { border-color: #ef4444; background: rgba(239, 68, 68, 0.1); }
+.notification-friend { border-color: #8b5cf6; background: rgba(139, 92, 246, 0.1); }
+.room-vip { 
+  background: linear-gradient(45deg, rgba(255, 215, 0, 0.1), rgba(255, 140, 0, 0.1));
+  border: 1px solid rgba(255, 215, 0, 0.3);
+}
+@keyframes slide-in {
+  from { transform: translateX(100%); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+.animate-slide-in {
+  animation: slide-in 0.3s ease-out;
+}
+.tab-panel {
+  animation: fadeIn 0.3s ease;
+}
+.password-strength {
+  height: 4px;
+  border-radius: 2px;
+  margin-top: 5px;
+  transition: all 0.3s;
+}
+.strength-weak { background: #ef4444; width: 25%; }
+.strength-fair { background: #f59e0b; width: 50%; }
+.strength-good { background: #10b981; width: 75%; }
+.strength-strong { background: #10b981; width: 100%; }
+.validation-message {
+  font-size: 0.8rem;
+  margin-top: 2px;
+  padding: 2px 5px;
+  border-radius: 3px;
+}
+.validation-error { color: #ef4444; background: rgba(239, 68, 68, 0.1); }
+.validation-success { color: #10b981; background: rgba(16, 185, 129, 0.1); }
+.validation-info { color: #3b82f6; background: rgba(59, 130, 246, 0.1); }
+.input-valid {
+  border-color: #10b981 !important;
+  box-shadow: 0 0 0 1px rgba(16, 185, 129, 0.5) !important;
+}
+.input-invalid {
+  border-color: #ef4444 !important;
+  box-shadow: 0 0 0 1px rgba(239, 68, 68, 0.5) !important;
+}
+.user-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 0.7rem;
+  font-weight: bold;
+  margin-right: 5px;
+}
+.badge-visitor { background: #6b7280; color: white; }
+.badge-registered { background: #10b981; color: white; }
+.badge-vip { background: linear-gradient(45deg, #f59e0b, #d97706); color: white; }
+.badge-moderator { background: linear-gradient(45deg, #3b82f6, #1d4ed8); color: white; }
+.badge-admin { background: linear-gradient(45deg, #8b5cf6, #7c3aed); color: white; }
+.badge-owner { background: linear-gradient(45deg, #ef4444, #dc2626); color: white; }
+.message-menu {
+  box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+}
+.message-menu button {
+  transition: all 0.2s;
+  text-align: right;
+  font-size: 0.85rem;
+}
+.message-menu button:hover {
+  transform: translateX(-2px);
+}
+.mention-user {
+  background: rgba(96, 165, 250, 0.1);
+  padding: 0 4px;
+  border-radius: 4px;
+  border: 1px solid rgba(96, 165, 250, 0.3);
+}
+.message-deleted {
+  opacity: 0.5;
+  background: rgba(239, 68, 68, 0.05);
+  border: 1px dashed rgba(239, 68, 68, 0.3);
+}
+.admin-report-notice {
+  border-left: 4px solid #f59e0b;
+  background: rgba(245, 158, 11, 0.1);
+  padding: 8px;
+  margin: 5px 0;
+  border-radius: 4px;
+}
+
+/* أضف هذا في نهاية قسم style */
+.admin-buttons-container {
+    animation: slideIn 0.3s ease-out;
+}
+
+@keyframes slideIn {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.role-badge-updated {
+    animation: pulseRole 1.5s ease-in-out infinite;
+}
+
+@keyframes pulseRole {
+    0%, 100% {
+        box-shadow: 0 0 5px currentColor;
+    }
+    50% {
+        box-shadow: 0 0 20px currentColor;
+    }
+}
+
+.message-deleted-actions {
+    transition: all 0.3s ease;
+}
+
+.message-deleted-actions:hover {
+    background: rgba(16, 185, 129, 0.1);
+}
+
+
+/* ═══════ نجوم متحركة في الخلفية ═══════ */
+.stars-bg {
+  position: fixed; inset: 0; z-index: 0; pointer-events: none; overflow: hidden;
+}
+.star {
+  position: absolute; border-radius: 50%; background: white; animation: twinkle var(--d, 3s) infinite var(--delay, 0s);
+}
+@keyframes twinkle {
+  0%,100% { opacity: 0.2; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.3); }
+}
+.shooting-star {
+  position: absolute; width: 100px; height: 2px;
+  background: linear-gradient(90deg, white, transparent);
+  animation: shoot var(--d, 4s) linear infinite var(--delay, 0s);
+  opacity: 0;
+}
+@keyframes shoot {
+  0% { transform: translateX(-200px) translateY(-200px) rotate(45deg); opacity: 1; }
+  100% { transform: translateX(800px) translateY(800px) rotate(45deg); opacity: 0; }
+}
+
+/* ═══════ Glassmorphism للصفحة الرئيسية ═══════ */
+#login > div {
+  background: rgba(15, 23, 42, 0.85) !important;
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 215, 0, 0.2);
+  box-shadow: 0 0 40px rgba(255, 215, 0, 0.1), 0 25px 50px rgba(0,0,0,0.5);
+}
+
+/* ═══════ عنوان متحرك ═══════ */
+.login-title {
+  background: linear-gradient(135deg, #ffd700, #ff8c00, #ff4500, #ffd700);
+  background-size: 300% 300%;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: gradientShift 4s ease infinite;
+  font-size: 2.5rem;
+  font-weight: 900;
+}
+@keyframes gradientShift {
+  0%,100% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+}
+
+/* ═══════ تحسين الرسائل ═══════ */
+.msg-bubble {
+  border-radius: 18px;
+  padding: 10px 14px;
+  max-width: 80%;
+  position: relative;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+.msg-bubble:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(0,0,0,0.3);
+}
+.msg-mine .msg-bubble {
+  background: linear-gradient(135deg, #1e40af, #7c3aed);
+  border-bottom-left-radius: 4px;
+  margin-left: auto;
+}
+.msg-other .msg-bubble {
+  background: linear-gradient(135deg, #1e293b, #0f172a);
+  border: 1px solid rgba(255,255,255,0.05);
+  border-bottom-right-radius: 4px;
+}
+.msg-avatar {
+  width: 36px; height: 36px; border-radius: 50%;
+  object-fit: cover; flex-shrink: 0;
+  border: 2px solid rgba(255,215,0,0.3);
+  display: flex; align-items: center; justify-content: center;
+  background: #1e293b; font-size: 1.2rem; overflow: hidden;
+}
+.msg-avatar img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; }
+.msg-time {
+  font-size: 0.65rem; color: rgba(255,255,255,0.4);
+  margin-top: 4px; display: block;
+}
+
+/* ═══════ Reactions ═══════ */
+.reactions-bar {
+  display: flex; gap: 4px; flex-wrap: wrap; margin-top: 6px;
+}
+.reaction-btn {
+  background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.15);
+  border-radius: 20px; padding: 2px 8px; font-size: 0.75rem;
+  cursor: pointer; transition: all 0.2s; display: flex; align-items: center; gap: 3px;
+}
+.reaction-btn:hover, .reaction-btn.active {
+  background: rgba(255,215,0,0.2); border-color: rgba(255,215,0,0.5);
+  transform: scale(1.1);
+}
+.reaction-picker {
+  display: none; position: absolute; bottom: 100%; right: 0;
+  background: #1e293b; border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 12px; padding: 8px; gap: 6px;
+  flex-wrap: wrap; width: 220px; z-index: 100;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+  animation: fadeIn 0.2s ease;
+}
+.reaction-picker.show { display: flex; }
+.reaction-option {
+  font-size: 1.4rem; cursor: pointer; padding: 4px;
+  border-radius: 8px; transition: all 0.15s;
+}
+.reaction-option:hover { background: rgba(255,255,255,0.1); transform: scale(1.3); }
+
+/* ═══════ رد على رسالة ═══════ */
+.reply-preview {
+  background: rgba(255,255,255,0.05); border-right: 3px solid #fbbf24;
+  border-radius: 8px; padding: 6px 10px; margin-bottom: 6px; font-size: 0.8rem;
+  color: rgba(255,255,255,0.6);
+}
+.reply-bar {
+  background: #1e293b; border-top: 1px solid rgba(255,255,255,0.1);
+  padding: 8px 12px; display: none; align-items: center; gap-2: gap;
+}
+.reply-bar.show { display: flex; }
+
+/* ═══════ ثيمات الألوان ═══════ */
+body.theme-gold { --accent: #ffd700; --accent2: #ff8c00; }
+body.theme-purple { --accent: #a855f7; --accent2: #7c3aed; }
+body.theme-blue { --accent: #3b82f6; --accent2: #06b6d4; }
+body.theme-green { --accent: #10b981; --accent2: #059669; }
+
+/* ═══════ تحسين الإدخال ═══════ */
+#login input {
+  background: rgba(255,255,255,0.08) !important;
+  border: 1px solid rgba(255,255,255,0.1) !important;
+  color: white !important;
+  border-radius: 12px !important;
+  transition: all 0.3s;
+}
+#login input:focus {
+  border-color: rgba(255,215,0,0.5) !important;
+  background: rgba(255,255,255,0.12) !important;
+  box-shadow: 0 0 0 3px rgba(255,215,0,0.1) !important;
+  outline: none !important;
+}
+#login input::placeholder { color: rgba(255,255,255,0.4) !important; }
+
+/* ═══════ تحسين الأزرار في صفحة الدخول ═══════ */
+#login button[onclick="loginAsVisitor()"] {
+  background: linear-gradient(135deg, #f59e0b, #d97706) !important;
+  box-shadow: 0 4px 15px rgba(245,158,11,0.4);
+  transition: all 0.3s; border-radius: 12px !important;
+}
+#login button[onclick="registerNewUser()"] {
+  background: linear-gradient(135deg, #10b981, #059669) !important;
+  box-shadow: 0 4px 15px rgba(16,185,129,0.4);
+  border-radius: 12px !important;
+}
+#login button[onclick="loginWithAccount()"] {
+  background: linear-gradient(135deg, #3b82f6, #7c3aed) !important;
+  box-shadow: 0 4px 15px rgba(99,102,241,0.4);
+  border-radius: 12px !important;
+}
+
+/* ═══════ تأثير دخول المستخدمين ═══════ */
+@keyframes userJoin {
+  0% { opacity: 0; transform: translateX(50px); }
+  100% { opacity: 1; transform: translateX(0); }
+}
+.user-joined-toast {
+  animation: userJoin 0.4s ease;
+}
+
+/* ═══════ مؤشر الكتابة ═══════ */
+.typing-dots span {
+  display: inline-block; width: 6px; height: 6px; border-radius: 50%;
+  background: #fbbf24; margin: 0 2px;
+  animation: typingDot 1.4s infinite;
+}
+.typing-dots span:nth-child(2) { animation-delay: 0.2s; }
+.typing-dots span:nth-child(3) { animation-delay: 0.4s; }
+@keyframes typingDot {
+  0%,60%,100% { transform: translateY(0); opacity: 0.5; }
+  30% { transform: translateY(-8px); opacity: 1; }
+}
+
+/* ═══════ حالة المستخدم ═══════ */
+.status-busy { background: #f59e0b; }
+.status-away { background: #6b7280; }
+
+</style>
+</head>
+<body>
+
+<!-- نجوم الخلفية -->
+<div class="stars-bg" id="starsBg"></div>
+
+<!-- شريط الرد على رسالة -->
+<div id="replyBar" class="reply-bar fixed bottom-16 right-0 left-0 z-30 px-4">
+  <div class="flex items-center gap-2 w-full bg-slate-800 rounded-xl p-2">
+    <i class="fas fa-reply text-yellow-400"></i>
+    <div class="flex-1 text-sm text-slate-300" id="replyPreviewText">رد على رسالة</div>
+    <button onclick="cancelReply()" class="text-slate-400 hover:text-red-400 p-1">
+      <i class="fas fa-times"></i>
+    </button>
+  </div>
+</div>
+
+<!-- شاشة تسجيل الدخول -->
+<div id="login" class="fixed inset-0 bg-black/90 flex items-center justify-center z-50">
+  <div class="bg-slate-800 p-6 rounded-xl w-96">
+    <div class="text-center mb-6">
+      <h1 class="login-title mb-2">🌙 نجمة وقمر</h1>
+      <p class="text-slate-400 mb-6">اختر طريقة الدخول المناسبة لك</p>
+      
+      <div class="flex border-b border-slate-700 mb-6">
+        <button id="tabVisitor" onclick="showTab('visitor')" 
+                class="flex-1 py-3 font-bold border-b-2 border-yellow-500 text-yellow-400">
+          👣 زائر
+        </button>
+        <button id="tabRegister" onclick="showTab('register')" 
+                class="flex-1 py-3 font-bold border-b-2 border-transparent text-slate-400">
+          ✅ تسجيل جديد
+        </button>
+        <button id="tabLogin" onclick="showTab('login')" 
+                class="flex-1 py-3 font-bold border-b-2 border-transparent text-slate-400">
+          🔐 تسجيل دخول
+        </button>
+      </div>
+    </div>
+    
+    <div id="tabContent">
+      <div id="visitorTab" class="tab-panel">
+        <div class="mb-4">
+          <p class="text-slate-300 mb-4">الدخول كزائر - سريع ولا يتطلب حساب</p>
+          <input id="visitorName" placeholder="اسم المستخدم" 
+                 class="w-full mb-4 px-4 py-3 text-black rounded-lg" />
+          
+          <div class="bg-yellow-900/20 border border-yellow-700 rounded-lg p-3 mb-4">
+            <p class="text-sm text-yellow-300">⚠️ ملاحظة: بيانات الزوار مؤقتة وتُحذف عند الخروج</p>
+            <ul class="text-xs text-slate-300 mt-2 space-y-1">
+              <li>• يمكنك المحادثة في الغرف العامة فقط</li>
+              <li>• لا يمكنك إرسال رسائل خاصة</li>
+              <li>• لا يمكنك إضافة أصدقاء</li>
+              <li>• بياناتك لا تُحفظ</li>
+              <li>• لا يمكنك تغيير لون الاسم أو صورته</li>
+            </ul>
+          </div>
+          
+          <button onclick="loginAsVisitor()" 
+                  class="w-full bg-gradient-to-r from-yellow-500 to-orange-500 text-black py-3 rounded-lg font-bold hover:opacity-90">
+            دخول كزائر
+          </button>
+        </div>
+      </div>
+      
+      <div id="registerTab" class="tab-panel hidden">
+        <div class="mb-4">
+          <p class="text-slate-300 mb-4">إنشاء حساب جديد - يحفظ جميع بياناتك</p>
+          
+          <input id="registerName" placeholder="اسم المستخدم" 
+                 class="w-full mb-3 px-4 py-3 text-black rounded-lg" />
+          
+          <input id="registerEmail" type="email" placeholder="البريد الإلكتروني" 
+                 class="w-full mb-3 px-4 py-3 text-black rounded-lg" />
+          
+          <input id="registerPassword" type="password" placeholder="كلمة السر (6 أحرف على الأقل)" 
+                 class="w-full mb-3 px-4 py-3 text-black rounded-lg" />
+          
+          <input id="registerConfirmPassword" type="password" placeholder="تأكيد كلمة السر" 
+                 class="w-full mb-3 px-4 py-3 text-black rounded-lg" />
+          
+          <div class="mb-4">
+            <label class="block mb-2 text-slate-300">الصورة الشخصية (اختياري)</label>
+            <input type="file" id="registerAvatar" class="w-full text-white" accept="image/*" />
+          </div>
+          
+          <div class="bg-green-900/20 border border-green-700 rounded-lg p-3 mb-4">
+            <p class="text-sm text-green-300">✅ مزايا العضوية الكاملة:</p>
+            <ul class="text-xs text-slate-300 mt-2 space-y-1">
+              <li>• حفظ جميع محادثاتك وبياناتك</li>
+              <li>• إرسال رسائل خاصة</li>
+              <li>• إضافة أصدقاء وحفظهم</li>
+              <li>• دخول من أي جهاز</li>
+              <li>• إمكانية استعادة كلمة السر</li>
+            </ul>
+          </div>
+          
+          <button onclick="registerNewUser()" 
+                  class="w-full bg-gradient-to-r from-green-500 to-emerald-600 text-white py-3 rounded-lg font-bold hover:opacity-90">
+            إنشاء حساب جديد
+          </button>
+        </div>
+      </div>
+      
+      <div id="loginTab" class="tab-panel hidden">
+        <div class="mb-4">
+          <p class="text-slate-300 mb-4">الدخول بحسابك المسجل مسبقاً</p>
+          
+          <input id="loginEmail" type="email" placeholder="البريد الإلكتروني" 
+                 class="w-full mb-4 px-4 py-3 text-black rounded-lg" />
+          
+          <input id="loginPassword" type="password" placeholder="كلمة السر" 
+                 class="w-full mb-4 px-4 py-3 text-black rounded-lg" />
+          
+          <div class="flex justify-between items-center mb-4">
+            <label class="flex items-center">
+              <input type="checkbox" id="rememberMe" class="mr-2">
+              <span class="text-sm text-slate-300">تذكرني</span>
+            </label>
+            <button onclick="showForgotPassword()" class="text-sm text-blue-400 hover:text-blue-300">
+              نسيت كلمة السر؟
+            </button>
+          </div>
+          
+          <button onclick="loginWithAccount()" 
+                  class="w-full bg-gradient-to-r from-blue-500 to-purple-600 text-white py-3 rounded-lg font-bold hover:opacity-90">
+            تسجيل الدخول
+          </button>
+          
+          <p class="text-center text-slate-400 mt-4">
+            ليس لديك حساب؟ 
+            <button onclick="showTab('register')" class="text-blue-400 hover:text-blue-300">
+              سجل الآن
+            </button>
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- نافذة نسيت كلمة السر -->
+<div id="forgotPasswordModal" class="hidden fixed inset-0 bg-black/90 flex justify-center items-center z-50">
+  <div class="bg-slate-800 rounded-xl w-96 p-6">
+    <h3 class="text-xl font-bold text-center mb-4">🔐 استعادة كلمة السر</h3>
+    
+    <div class="mb-4">
+      <p class="text-slate-300 mb-4">أدخل بريدك الإلكتروني وسنرسل لك رمز الاستعادة</p>
+      
+      <input id="forgotEmail" type="email" placeholder="البريد الإلكتروني" 
+             class="w-full mb-4 px-4 py-3 text-black rounded-lg" />
+      
+      <div id="resetCodeSection" class="hidden">
+        <input id="resetCode" placeholder="رمز الاستعادة" 
+               class="w-full mb-3 px-4 py-3 text-black rounded-lg" />
+        
+        <input id="newPassword" type="password" placeholder="كلمة السر الجديدة" 
+               class="w-full mb-3 px-4 py-3 text-black rounded-lg" />
+        
+        <input id="confirmNewPassword" type="password" placeholder="تأكيد كلمة السر الجديدة" 
+               class="w-full mb-4 px-4 py-3 text-black rounded-lg" />
+      </div>
+    </div>
+    
+    <div class="flex gap-2">
+      <button onclick="sendResetCode()" id="sendResetBtn"
+              class="flex-1 py-3 bg-blue-600 rounded-lg font-bold hover:bg-blue-700">
+        إرسال رمز الاستعادة
+      </button>
+      <button onclick="closeForgotPassword()" 
+              class="flex-1 py-3 bg-slate-700 rounded-lg font-bold hover:bg-slate-600">
+        إلغاء
+      </button>
+    </div>
+    
+    <div id="resetStatus" class="mt-4 text-center text-sm"></div>
+  </div>
+</div>
+
+<!-- الشريط الجانبي للغرف -->
+<div id="roomsBar" class="sidebar sidebar-right">
+  <div class="p-4 border-b border-slate-700 flex justify-between items-center">
+    <h3 class="text-xl font-bold text-yellow-400">🏠 الغرف المتاحة</h3>
+    <button onclick="toggle('roomsBar')" class="p-2 bg-slate-700 hover:bg-red-600 rounded-lg transition-colors" title="إغلاق">
+      <i class="fas fa-times"></i>
+    </button>
+  </div>
+  <div class="p-2">
+    <button onclick="switchRoom('general')" class="w-full p-3 mb-2 bg-slate-800 hover:bg-slate-700 rounded-lg flex items-center gap-2">
+      <i class="fas fa-globe"></i>
+      <span>💬 العامة</span>
+    </button>
+    <button onclick="switchRoom('friends')" class="w-full p-3 mb-2 bg-slate-800 hover:bg-slate-700 rounded-lg flex items-center gap-2">
+      <i class="fas fa-users"></i>
+      <span>👥 الأصدقاء</span>
+    </button>
+    <button onclick="switchRoom('vip')" class="w-full p-3 mb-2 bg-slate-800 hover:bg-slate-700 rounded-lg flex items-center gap-2 room-vip">
+      <i class="fas fa-crown"></i>
+      <span>👑 VIP <small class="text-xs text-yellow-300">(مميز)</small></span>
+    </button>
+    <button onclick="switchRoom('games')" class="w-full p-3 mb-2 bg-slate-800 hover:bg-slate-700 rounded-lg flex items-center gap-2">
+      <i class="fas fa-gamepad"></i>
+      <span>🎮 الألعاب</span>
+    </button>
+  </div>
+</div>
+
+<!-- الشريط الجانبي للأعضاء -->
+<div id="usersBar" class="sidebar sidebar-left">
+  <div class="p-4 border-b border-slate-700">
+    <div class="flex justify-between items-center">
+      <h3 class="text-xl font-bold text-yellow-400">👥 الأعضاء</h3>
+      <div class="flex gap-2">
+        <button onclick="showNotificationsPanel()" class="p-2 bg-slate-800 hover:bg-slate-700 rounded-lg relative" title="الإشعارات">
+          <i class="fas fa-bell"></i>
+          <span id="notificationBadge" class="notification-badge hidden">0</span>
+        </button>
+        <button onclick="toggle('usersBar')" class="p-2 bg-slate-700 hover:bg-red-600 rounded-lg transition-colors" title="إغلاق">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+    </div>
+  </div>
+  
+  <div class="p-3">
+    <button onclick="openProfile()" class="w-full p-3 mb-4 bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg flex items-center justify-center gap-2 hover:opacity-90">
+      <i class="fas fa-user-circle"></i>
+      <span>📱 بروفايلي</span>
+    </button>
+    
+    <div class="mb-6">
+      <h4 class="text-sm text-slate-400 mb-2">🟢 المتصلين الآن (<span id="onlineCount">0</span>)</h4>
+      <div id="onlineUsers" class="space-y-2"></div>
+    </div>
+    
+    <div>
+      <h4 class="text-sm text-slate-400 mb-2">🌟 الأصدقاء (<span id="friendsCount">0</span>)</h4>
+      <div id="friendsList" class="space-y-2"></div>
+    </div>
+  </div>
+</div>
+
+<!-- الهيدر الرئيسي -->
+<header class="flex justify-between items-center p-4 bg-gradient-to-r from-slate-900 to-slate-800 shadow-lg sticky top-0 z-40">
+  <button onclick="toggle('roomsBar')" class="p-3 bg-slate-800 hover:bg-slate-700 rounded-lg">
+    <i class="fas fa-comments text-xl"></i>
+  </button>
+  
+  <div class="text-center">
+    <h1 class="text-2xl font-bold neon-text" style="color: #ff0">🌙 نجمة وقمر</h1>
+    <div id="roomTitle" class="text-sm text-slate-300">💬 الغرفة: العامة</div>
+    <div id="roomStatus" class="text-xs text-slate-400 hidden">
+      <span id="typingUsers"></span>
+    </div>
+  </div>
+  
+  <div class="flex gap-2">
+    <button onclick="showNotificationsPanel()" class="p-3 bg-slate-800 hover:bg-slate-700 rounded-lg relative">
+      <i class="fas fa-bell"></i>
+      <span id="headerNotificationBadge" class="notification-badge hidden">0</span>
+    </button>
+    <button onclick="toggle('usersBar')" class="p-3 bg-slate-800 hover:bg-slate-700 rounded-lg">
+      <i class="fas fa-user-friends text-xl"></i>
+    </button>
+  </div>
+</header>
+
+<!-- منطقة المحادثة الرئيسية -->
+<main id="chat" class="p-4 h-[calc(100vh-180px)] overflow-y-auto">
+  <div class="text-center text-slate-400 mt-10">
+    <i class="fas fa-comments text-4xl mb-4"></i>
+    <p>مرحبا! ابدأ المحادثة الآن</p>
+  </div>
+</main>
+
+<!-- شريط الكتابة المثبت -->
+<footer class="sticky bottom-0 bg-slate-900 border-t border-slate-800 p-4 z-30">
+  <div class="flex gap-2 items-center">
+    <div class="relative">
+      <button onclick="toggleEmojiPicker()" class="p-3 bg-slate-800 hover:bg-slate-700 rounded-lg">
+        <i class="fas fa-smile"></i>
+      </button>
+      <div id="emojiPicker" class="emoji-picker"></div>
+    </div>
+    
+    <div class="relative flex-1">
+      <input id="msg" 
+             class="w-full px-4 py-3 text-white bg-slate-800 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500" 
+             placeholder="اكتب رسالتك هنا..." 
+             onkeypress="handleKeyPress(event)" 
+             oninput="handleTyping()" />
+      <div id="typingIndicator" class="absolute bottom-full mb-2 text-sm text-slate-400 hidden">
+        <span class="typing-indicator">...</span> <span id="typingUsersText"></span> جاري الكتابة
+      </div>
+    </div>
+    
+    <div class="flex gap-2">
+      <label class="p-3 bg-slate-800 hover:bg-slate-700 rounded-lg cursor-pointer">
+        <i class="fas fa-image"></i>
+        <input type="file" id="fileUpload" class="hidden" accept="image/*,video/*" onchange="uploadFile(event)" />
+      </label>
+      <button onclick="sendMsg()" class="p-3 bg-gradient-to-r from-yellow-500 to-orange-500 text-black rounded-lg font-bold hover:opacity-90">
+        <i class="fas fa-paper-plane"></i>
+      </button>
+    </div>
+  </div>
+</footer>
+
+<!-- نافذة المحادثة الخاصة -->
+<div id="privateChatWindow" class="private-chat">
+  <div class="bg-gradient-to-r from-purple-700 to-blue-700 p-3 rounded-t-lg flex justify-between items-center cursor-move" id="privateChatHeader">
+    <div class="flex items-center gap-2">
+      <img id="privateChatAvatar" src="" class="w-8 h-8 rounded-full">
+      <span id="privateChatName" class="font-bold"></span>
+      <span id="privateChatStatus" class="status-indicator status-online"></span>
+    </div>
+    <div class="flex gap-2">
+      <button onclick="minimizePrivateChat()" class="p-1 hover:bg-black/20 rounded">
+        <i class="fas fa-window-minimize"></i>
+      </button>
+      <button onclick="closePrivateChat()" class="p-1 hover:bg-black/20 rounded">
+        <i class="fas fa-times"></i>
+      </button>
+    </div>
+  </div>
+  
+  <div id="privateChatMessages" class="flex-1 p-3 overflow-y-auto" style="max-height: 300px;"></div>
+  
+  <div class="p-3 border-t border-slate-700">
+    <div class="flex gap-2">
+      <input id="privateMessage" 
+             class="flex-1 px-3 py-2 bg-slate-800 text-white rounded"
+             placeholder="اكتب رسالة خاصة..."
+             onkeypress="handlePrivateKeyPress(event)"
+             oninput="handlePrivateTyping()" />
+      <button onclick="sendPrivateMessage()" class="px-4 py-2 bg-purple-600 rounded hover:bg-purple-700">
+        <i class="fas fa-paper-plane"></i>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- نافذة البروفايل -->
+<div id="profileModal" class="hidden fixed inset-0 bg-black/90 flex justify-center items-center z-50">
+  <div class="bg-slate-800 rounded-xl w-96 max-h-[90vh] overflow-y-auto">
+    <div class="bg-gradient-to-r from-blue-700 to-purple-700 p-6 rounded-t-xl">
+      <h3 class="text-xl font-bold text-center">📱 البروفايل الشخصي</h3>
+    </div>
+    
+    <div class="p-6">
+      <div class="text-center mb-6">
+        <img id="profileAvatar" src="" class="w-24 h-24 rounded-full mx-auto mb-4 border-4 border-yellow-500">
+        <h4 id="profileName" class="text-xl font-bold"></h4>
+        <div id="profileBadge" class="inline-block px-3 py-1 rounded-full text-xs font-bold mt-2"></div>
+        <div id="profilePoints" class="text-sm text-slate-300 mt-2"></div>
+      </div>
+      
+      <div class="space-y-4">
+        <div>
+          <label class="block mb-2">تغيير الصورة</label>
+          <input type="file" id="changeAvatar" class="w-full text-white" accept="image/*" />
+        </div>
+        
+        <div>
+          <label class="block mb-2">نمط الاسم</label>
+          <div class="grid grid-cols-2 gap-2 mb-2">
+            <button onclick="setNameStyle('neon')" class="p-3 bg-slate-900 rounded border border-yellow-500">
+              <span class="neon-text" style="color: #ff0">نيون ✨</span>
+            </button>
+            <button onclick="setNameStyle('normal')" class="p-3 bg-slate-900 rounded">
+              <span>عادي</span>
+            </button>
+          </div>
+        </div>
+        
+        <div>
+          <label class="block mb-2">لون الاسم</label>
+          <div class="flex flex-wrap gap-2 mb-2">
+            <button onclick="setNameColor('#ff0')" style="background:#ff0;box-shadow:0 0 10px #ff0" class="w-8 h-8 rounded-full"></button>
+            <button onclick="setNameColor('#0ff')" style="background:#0ff;box-shadow:0 0 10px #0ff" class="w-8 h-8 rounded-full"></button>
+            <button onclick="setNameColor('#f0f')" style="background:#f0f;box-shadow:0 0 10px #f0f" class="w-8 h-8 rounded-full"></button>
+            <button onclick="setNameColor('#0f0')" style="background:#0f0;box-shadow:0 0 10px #0f0" class="w-8 h-8 rounded-full"></button>
+            <button onclick="setNameColor('#ffffff')" style="background:#ffffff" class="w-8 h-8 rounded-full"></button>
+            <button onclick="setNameColor('#ff6b6b')" style="background:#ff6b6b" class="w-8 h-8 rounded-full"></button>
+            <button onclick="setNameColor('#4ecdc4')" style="background:#4ecdc4" class="w-8 h-8 rounded-full"></button>
+            <button onclick="setNameColor('#45b7d1')" style="background:#45b7d1" class="w-8 h-8 rounded-full"></button>
+          </div>
+        </div>
+        
+        <div>
+          <label class="block mb-2">الخط</label>
+          <select id="profileFont" class="w-full p-2 bg-slate-900 rounded">
+            <option value="font-cairo">Cairo</option>
+            <option value="font-amiri">Amiri</option>
+            <option value="font-changa">Changa</option>
+            <option value="font-tajawal">Tajawal</option>
+          </select>
+        </div>
+        
+        <div class="pt-4 border-t border-slate-700">
+          <button onclick="saveProfile()" class="w-full py-3 bg-gradient-to-r from-green-500 to-emerald-600 rounded-lg font-bold hover:opacity-90">
+            💾 حفظ التغييرات
+          </button>
+          <button onclick="closeProfile()" class="w-full py-3 bg-slate-700 rounded-lg font-bold mt-2 hover:bg-slate-600">
+            إغلاق
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- نافذة بروفايل الأعضاء -->
+<div id="userProfileModal" class="hidden fixed inset-0 bg-black/90 flex justify-center items-center z-50">
+  <div class="bg-slate-800 rounded-xl w-96">
+    <div class="bg-gradient-to-r from-green-700 to-blue-700 p-6 rounded-t-xl">
+      <h3 id="userProfileTitle" class="text-xl font-bold text-center">👤 بروفايل العضو</h3>
+    </div>
+    
+    <div class="p-6">
+      <div class="text-center mb-6">
+        <img id="userProfileAvatar" src="" class="w-24 h-24 rounded-full mx-auto mb-4 border-4 border-yellow-500">
+        <h4 id="userProfileName" class="text-xl font-bold"></h4>
+        <div id="userProfileBadge" class="inline-block px-3 py-1 rounded-full text-xs font-bold mt-2"></div>
+        <div id="userProfileStatus" class="text-sm text-slate-300 mt-2">
+          <span class="status-indicator status-online"></span> <span>متصل الآن</span>
+        </div>
+      </div>
+      
+      <div class="grid grid-cols-2 gap-3">
+        <button onclick="startPrivateChat()" class="p-3 bg-blue-600 rounded-lg hover:bg-blue-700">
+            <i class="fas fa-comment"></i> دردشة خاصة
+        </button>
+        <button onclick="sendFriendRequest()" class="p-3 bg-green-600 rounded-lg hover:bg-green-700">
+            <i class="fas fa-user-plus"></i> إضافة صديق
+        </button>
+        
+        <div id="adminControls" style="display: none;">
+            <button onclick="openMuteModal()" class="p-3 bg-yellow-600 rounded-lg hover:bg-yellow-700">
+                <i class="fas fa-volume-mute"></i> كتم
+            </button>
+            <button onclick="openKickModal()" class="p-3 bg-orange-600 rounded-lg hover:bg-orange-700">
+                <i class="fas fa-user-slash"></i> طرد
+            </button>
+            <button onclick="openBanModal()" class="p-3 bg-red-600 rounded-lg hover:bg-red-700">
+                <i class="fas fa-ban"></i> حظر
+            </button>
+            <button onclick="openPromoteModal()" class="p-3 bg-purple-600 rounded-lg hover:bg-purple-700">
+                <i class="fas fa-star"></i> ترقية
+            </button>
+        </div>
+      </div>
+    
+      <div class="mt-6 pt-4 border-t border-slate-700">
+        <button onclick="reportUser()" class="w-full py-2 bg-slate-700 rounded-lg hover:bg-slate-600">
+          <i class="fas fa-flag"></i> الإبلاغ عن مخالفة
+        </button>
+        <button onclick="closeUserProfile()" class="w-full py-2 bg-slate-900 rounded-lg hover:bg-slate-800 mt-2">
+          إغلاق
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- نافذة الإشعارات -->
+<div id="notificationsPanel" class="hidden fixed top-16 right-4 w-96 bg-slate-800 rounded-lg shadow-xl z-50 max-h-[80vh] overflow-hidden flex flex-col">
+  <div class="p-4 bg-gradient-to-r from-purple-700 to-blue-700 flex justify-between items-center">
+    <h3 class="font-bold">🔔 الإشعارات</h3>
+    <div>
+      <button onclick="markAllNotificationsRead()" class="text-sm px-2 py-1 bg-white/20 rounded">
+        تعليم الكل كمقروء
+      </button>
+      <button onclick="document.getElementById('notificationsPanel').classList.add('hidden')" class="ml-2 text-lg">
+        ×
+      </button>
+    </div>
+  </div>
+  
+  <div class="flex-1 overflow-y-auto p-2">
+    <div id="notificationsList"></div>
+  </div>
+  
+  <div class="p-3 border-t border-slate-700 text-center">
+    <button onclick="clearNotifications()" class="text-sm text-slate-400 hover:text-white">
+      مسح جميع الإشعارات
+    </button>
+  </div>
+</div>
+
+<!-- نافذة الكتم -->
+<div id="muteModal" class="hidden fixed inset-0 bg-black/90 flex justify-center items-center z-50">
+  <div class="bg-slate-800 rounded-xl w-96 p-6">
+    <h3 class="text-xl font-bold text-center mb-4">🔇 كتم المستخدم</h3>
+    <div class="mb-4">
+      <label class="block mb-2">المدة (ثانية)</label>
+      <input type="number" id="muteDuration" class="w-full p-2 bg-slate-900 rounded" value="300" min="60" max="86400">
+    </div>
+    <div class="mb-4">
+      <label class="block mb-2">السبب (اختياري)</label>
+      <input type="text" id="muteReason" class="w-full p-2 bg-slate-900 rounded" placeholder="سبب الكتم...">
+    </div>
+    <div class="flex gap-2">
+      <button onclick="muteUser()" class="flex-1 py-3 bg-yellow-600 rounded-lg font-bold hover:bg-yellow-700">
+        تأكيد الكتم
+      </button>
+      <button onclick="closeMuteModal()" class="flex-1 py-3 bg-slate-700 rounded-lg font-bold hover:bg-slate-600">
+        إلغاء
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- نافذة الطرد -->
+<div id="kickModal" class="hidden fixed inset-0 bg-black/90 flex justify-center items-center z-50">
+  <div class="bg-slate-800 rounded-xl w-96 p-6">
+    <h3 class="text-xl font-bold text-center mb-4">👢 طرد المستخدم</h3>
+    <div class="mb-4">
+      <label class="block mb-2">السبب (اختياري)</label>
+      <input type="text" id="kickReason" class="w-full p-2 bg-slate-900 rounded" placeholder="سبب الطرد...">
+    </div>
+    <div class="flex gap-2">
+      <button onclick="kickUser()" class="flex-1 py-3 bg-orange-600 rounded-lg font-bold hover:bg-orange-700">
+        تأكيد الطرد
+      </button>
+      <button onclick="closeKickModal()" class="flex-1 py-3 bg-slate-700 rounded-lg font-bold hover:bg-slate-600">
+        إلغاء
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- نافذة الحظر -->
+<div id="banModal" class="hidden fixed inset-0 bg-black/90 flex justify-center items-center z-50">
+  <div class="bg-slate-800 rounded-xl w-96 p-6">
+    <h3 class="text-xl font-bold text-center mb-4">🚫 حظر المستخدم</h3>
+    <div class="mb-4">
+      <label class="block mb-2">السبب (اختياري)</label>
+      <input type="text" id="banReason" class="w-full p-2 bg-slate-900 rounded" placeholder="سبب الحظر...">
+    </div>
+    <div class="flex gap-2">
+      <button onclick="banUser()" class="flex-1 py-3 bg-red-600 rounded-lg font-bold hover:bg-red-700">
+        تأكيد الحظر
+      </button>
+      <button onclick="closeBanModal()" class="flex-1 py-3 bg-slate-700 rounded-lg font-bold hover:bg-slate-600">
+        إلغاء
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- نافذة الترقية -->
+<div id="promoteModal" class="hidden fixed inset-0 bg-black/90 flex justify-center items-center z-50">
+  <div class="bg-slate-800 rounded-xl w-96 p-6">
+    <h3 class="text-xl font-bold text-center mb-4">⭐ ترقية صلاحيات</h3>
+    <div class="mb-4">
+      <label class="block mb-2">الصلاحية الجديدة</label>
+      <select id="promoteRole" class="w-full p-2 bg-slate-900 rounded">
+        <option value="member">👤 عضو</option>
+        <option value="vip">👑 VIP</option>
+        <option value="moderator">🛡️ مشرف</option>
+        <option value="admin">⭐ مسؤول</option>
+      </select>
+    </div>
+    <div class="flex gap-2">
+      <button onclick="promoteUser()" class="flex-1 py-3 bg-purple-600 rounded-lg font-bold hover:bg-purple-700">
+        تأكيد الترقية
+      </button>
+      <button onclick="closePromoteModal()" class="flex-1 py-3 bg-slate-700 rounded-lg font-bold hover:bg-slate-600">
+        إلغاء
+      </button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ==================== تعريف المتغيرات ====================
+let SOCKET_SERVER_URL;
+if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+    SOCKET_SERVER_URL = window.location.port === '3000' 
+        ? window.location.origin 
+        : 'http://localhost:3000';
+} else {
+    SOCKET_SERVER_URL = window.location.origin;
+}
+
+let socket = null;
+let reconnectAttempts = 0;
+const MAX_RECONNECT_ATTEMPTS = 5;
+const emojis = ['😀', '😂', '😍', '😎', '🤔', '😊', '🎉', '👍', '❤️', '🔥', '✨', '🌟', '💀', '👋', '🎮', '📸'];
+
+const state = {
+    user: null,
+    rooms: {
+        general: [],
+        friends: [],
+        vip: [],
+        games: []
+    },
+    privateMessages: {},
+    onlineUsers: [],
+    friends: [],
+    friendRequests: [],
+    currentPrivateChat: null,
+    room: 'general',
+    color: '#ff0',
+    nameStyle: 'neon',
+    typingUsers: {},
+    selectedUser: null,
+    isOwner: false,
+    isAdmin: false,
+    isModerator: false,
+    isVIP: false,
+    connected: false,
+    notifications: JSON.parse(localStorage.getItem('notifications')) || []
+};
+
+// ==================== دوال الأمان ====================
+function esc(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+// ==================== نظام التبويب ====================
+let currentTab = 'visitor';
+
+function showTab(tabName) {
+    currentTab = tabName;
+    
+    document.getElementById('tabVisitor').className = 
+        `flex-1 py-3 font-bold border-b-2 ${tabName === 'visitor' ? 'border-yellow-500 text-yellow-400' : 'border-transparent text-slate-400'}`;
+    
+    document.getElementById('tabRegister').className = 
+        `flex-1 py-3 font-bold border-b-2 ${tabName === 'register' ? 'border-yellow-500 text-yellow-400' : 'border-transparent text-slate-400'}`;
+    
+    document.getElementById('tabLogin').className = 
+        `flex-1 py-3 font-bold border-b-2 ${tabName === 'login' ? 'border-yellow-500 text-yellow-400' : 'border-transparent text-slate-400'}`;
+    
+    document.getElementById('visitorTab').classList.toggle('hidden', tabName !== 'visitor');
+    document.getElementById('registerTab').classList.toggle('hidden', tabName !== 'register');
+    document.getElementById('loginTab').classList.toggle('hidden', tabName !== 'login');
+}
+
+// ==================== التحقق من الصلاحيات ====================
+function checkPermissions() {
+    if (!state.user) return;
+    const role = state.user.role || 'member';
+
+    state.isOwner     = role === 'owner';
+    state.isAdmin     = role === 'admin'     || state.isOwner;
+    state.isModerator = role === 'moderator' || state.isAdmin;
+    state.isVIP       = role === 'vip';
+
+    console.log('🔐 صلاحيات ' + state.user.name + ': ' + role);
+
+    // تلوين زر VIP حسب الصلاحية
+    const vipBtn = document.querySelector(".room-vip");
+    if (vipBtn) {
+        const canEnterVip = ['owner','admin','moderator','vip'].includes(role);
+        vipBtn.style.opacity = canEnterVip ? '1' : '0.5';
+    }
+
+    updateAdminControls();
+}
+
+function updateAdminControls() {
+    const adminControls = document.getElementById('adminControls');
+    if (adminControls) {
+        if (state.isOwner || state.isAdmin || state.isModerator) {
+            adminControls.style.display = 'grid';
+            console.log('🛡️ أزرار الإشراف مفعلة');
+        } else {
+            adminControls.style.display = 'none';
+        }
+    }
+}
+
+function getBadge(role) {
+    const badges = {
+        'owner': '<span class="badge-owner px-2 py-1 rounded-full text-xs">👑 المالك</span>',
+        'admin': '<span class="badge-admin px-2 py-1 rounded-full text-xs">⭐ مسؤول</span>',
+        'moderator': '<span class="badge-moderator px-2 py-1 rounded-full text-xs">🛡️ مشرف</span>',
+        'vip': '<span class="badge-vip px-2 py-1 rounded-full text-xs">👑 VIP</span>',
+        'member': '<span class="badge-member px-2 py-1 rounded-full text-xs">👤 عضو</span>',
+        'visitor': '<span class="badge-member px-2 py-1 rounded-full text-xs">👣 زائر</span>'
+    };
+    return badges[role] || badges.member;
+}
+
+// ==================== نظام المنشن ====================
+function addMention(username) {
+    const msgInput = document.getElementById('msg');
+    msgInput.value += `@${username} `;
+    msgInput.focus();
+    showToast(`تم ذكر ${username}`, 'info');
+}
+
+function renderMessageWithMentions(message) {
+    let text = message.text;
+    text = text.replace(/@(\w+)/g, (match, username) => {
+        return `<span class="mention-user" onclick="viewUserProfileByName('${username}')" style="color: #60a5fa; font-weight: bold; cursor: pointer;">@${username}</span>`;
+    });
+    return text;
+}
+
+function viewUserProfileByName(username) {
+    const user = state.onlineUsers.find(u => u.name === username);
+    if (user) {
+        viewUserProfile(user.id);
+    } else {
+        showToast('المستخدم غير متصل حالياً', 'warning');
+    }
+}
+
+// ==================== نظام قائمة الرسائل ====================
+function toggleMessageMenu(messageId, event) {
+    event.stopPropagation();
+    const menu = document.getElementById(`menu-${messageId}`);
+    const allMenus = document.querySelectorAll('.message-menu');
+    
+    allMenus.forEach(m => {
+        if (m.id !== `menu-${messageId}`) {
+            m.classList.add('hidden');
+        }
+    });
+    
+    menu.classList.toggle('hidden');
+    
+    setTimeout(() => {
+        document.addEventListener('click', function closeMenu(e) {
+            if (!menu.contains(e.target) && !e.target.closest(`button[onclick*="toggleMessageMenu('${messageId}"]`)) {
+                menu.classList.add('hidden');
+                document.removeEventListener('click', closeMenu);
+            }
+        });
+    }, 10);
+}
+
+function quoteMessage(messageId) {
+    const room = state.room;
+    const messages = state.rooms[room] || [];
+    const message = messages.find(m => m.id === messageId);
+    
+    if (message) {
+        const msgInput = document.getElementById('msg');
+        const quotedText = message.text.replace(/<[^>]*>/g, '').substring(0, 100);
+        msgInput.value = `"${quotedText}..." - @${message.name}\n`;
+        msgInput.focus();
+        showToast('تم نسخ الاقتباس', 'success');
+    }
+}
+
+function reportMessage(messageId) {
+    const room = state.room;
+    const messages = state.rooms[room] || [];
+    const message = messages.find(m => m.id === messageId);
+    
+    if (message) {
+        const reason = prompt('سبب الإبلاغ عن الرسالة:');
+        if (reason && reason.trim()) {
+            if (socket && state.connected) {
+                socket.emit('message:report', {
+                    messageId: messageId,
+                    reporterId: socket.id,
+                    reporterName: state.user.name,
+                    reason: reason,
+                    room: room
+                });
+                showToast('تم الإبلاغ عن الرسالة للمشرفين', 'success');
+            }
+        }
+    }
+}
+
+function deleteMessage(messageId, room) {
+    if (!state.isOwner && !state.isAdmin && !state.isModerator) {
+        showToast('ليس لديك صلاحية لحذف الرسائل', 'error');
+        return;
+    }
+    
+    if (confirm('هل تريد حذف هذه الرسالة؟ سيتم حذفها من جميع المستخدمين.')) {
+        if (socket && state.connected) {
+            socket.emit('admin:deleteMessage', {
+                messageId: messageId,
+                room: room,
+                deleter: state.user.name
+            });
+        }
+    }
+}
+
+// ==================== تحسين دالة render لدعم الحذف ====================
+function render() {
+    const chat = document.getElementById('chat');
+    const messages = state.rooms[state.room] || [];
+    
+    if (messages.length === 0) {
+        chat.innerHTML = `
+            <div class="text-center text-slate-400 mt-20">
+                <i class="fas fa-comments text-6xl mb-4"></i>
+                <p class="text-xl">لا توجد رسائل في هذه الغرفة بعد</p>
+                <p class="text-sm mt-2">كن أول من يبدأ المحادثة!</p>
+            </div>
+        `;
+        return;
+    }
+    
+    let html = '';
+    messages.forEach((msg, index) => {
+        const isCurrentUser = state.user && msg.userId === socket.id;
+        const alignClass = isCurrentUser ? 'text-left' : 'text-right';
+        const bgClass = isCurrentUser ? 'bg-blue-900/30' : 'bg-slate-800/50';
+        const nameClass = msg.style === 'neon' ? 'neon-text' : 'normal-text';
+        
+        // تحقق إذا كانت الرسالة محذوفة
+        const isDeleted = msg.deleted === true;
+        
+        if (isDeleted) {
+            html += `
+            <div class="msg ${alignClass} message-deleted" data-message-id="${msg.id}">
+                <div class="inline-block p-3 rounded-xl max-w-[80%] w-full">
+                    <div class="text-center text-slate-500 italic text-sm">
+                        <i class="fas fa-trash mr-2"></i>
+                        حذف ${msg.deleter || 'المشرف'} رسالة ${msg.name}
+                        <span class="text-xs text-slate-600 mr-2">(${msg.time})</span>
+                    </div>
+                    ${(state.isOwner || state.isAdmin) ? `
+                    <div class="text-center mt-2">
+                        <button onclick="restoreMessage('${msg.id}', '${state.room}')" 
+                                class="text-xs bg-green-600 px-3 py-1 rounded hover:bg-green-700">
+                            <i class="fas fa-undo mr-1"></i>استعادة
+                        </button>
+                    </div>
+                    ` : ''}
+                </div>
+            </div>
+            `;
+            return;
+        }
+        
+        // صورة المستخدم
+        const senderUser = state.onlineUsers ? state.onlineUsers.find(u => u.id === msg.userId) : null;
+        const avatarSrc = msg.avatar || (senderUser && senderUser.avatar) || '';
+        const avatarHtml = avatarSrc && avatarSrc.startsWith('data:')
+            ? `<img src="${avatarSrc}" class="w-full h-full object-cover">`
+            : `<span style="font-size:1.3rem">${avatarSrc || '🌟'}</span>`;
+
+        // الـ reactions
+        const reactions = msg.reactions || {};
+        const reactionsHtml = Object.entries(reactions).map(([emoji, users]) =>
+            users.length ? `<button class="reaction-btn ${users.includes(socket.id) ? 'active' : ''}"
+                onclick="toggleReaction('${msg.id}', '${emoji}')">
+                ${emoji} <span>${users.length}</span>
+            </button>` : ''
+        ).join('');
+
+        // الرد المقتبس
+        const replyHtml = msg.replyTo ? `
+            <div class="reply-preview">
+                <i class="fas fa-reply ml-1 text-yellow-400"></i>
+                <strong>${esc(msg.replyTo.name)}:</strong> ${esc((msg.replyTo.text||'').slice(0,60))}
+            </div>` : '';
+
+        html += `
+        <div class="msg flex items-end gap-2 mb-3 ${isCurrentUser ? 'flex-row-reverse' : ''}" data-message-id="${msg.id}">
+            <!-- صورة البروفايل -->
+            <div class="msg-avatar flex-shrink-0">${avatarHtml}</div>
+
+            <!-- الفقاعة -->
+            <div class="msg-bubble ${isCurrentUser ? 'msg-mine' : 'msg-other'} relative group">
+                ${replyHtml}
+                <!-- اسم + شارة + قائمة -->
+                <div class="flex items-center gap-2 mb-1 flex-wrap">
+                    <span class="${nameClass} font-bold text-sm cursor-pointer hover:underline"
+                          style="color: ${msg.color || '#ff0'}"
+                          onclick="addMention('${msg.name}')">
+                        ${esc(msg.name)}
+                    </span>
+                    ${getBadge(msg.role)}
+                    <div class="relative mr-auto">
+                        <button onclick="toggleMessageMenu('${msg.id}', event)"
+                                class="text-slate-400 hover:text-white p-1 rounded opacity-0 group-hover:opacity-100 transition-opacity">
+                            <i class="fas fa-ellipsis-v text-xs"></i>
+                        </button>
+                        <div id="menu-${msg.id}"
+                             class="message-menu hidden absolute left-0 mt-1 w-36 bg-slate-800 border border-slate-700 rounded-xl shadow-2xl z-50">
+                            <button onclick="setReply('${msg.id}')"
+                                    class="w-full text-right px-3 py-2 hover:bg-slate-700 rounded-t-xl text-sm">
+                                <i class="fas fa-reply ml-2 text-blue-400"></i>رد
+                            </button>
+                            <button onclick="toggleReactionPicker('${msg.id}', event)"
+                                    class="w-full text-right px-3 py-2 hover:bg-slate-700 text-sm">
+                                <i class="fas fa-smile ml-2 text-yellow-400"></i>تفاعل
+                            </button>
+                            <button onclick="reportMessage('${msg.id}')"
+                                    class="w-full text-right px-3 py-2 hover:bg-slate-700 text-sm">
+                                <i class="fas fa-flag ml-2 text-orange-400"></i>إبلاغ
+                            </button>
+                            ${(state.isOwner || state.isAdmin || state.isModerator) ? `
+                            <button onclick="deleteMessage('${msg.id}', '${msg.room}')"
+                                    class="w-full text-right px-3 py-2 hover:bg-red-900/50 text-red-400 rounded-b-xl text-sm">
+                                <i class="fas fa-trash ml-2"></i>حذف
+                            </button>` : ''}
+                        </div>
+                        <!-- Reaction Picker -->
+                        <div id="rp-${msg.id}" class="reaction-picker">
+                            ${['❤️','😂','😮','😢','😡','👍','👎','🔥','🎉','💯'].map(e =>
+                                `<span class="reaction-option" onclick="toggleReaction('${msg.id}','${e}')">${e}</span>`
+                            ).join('')}
+                        </div>
+                    </div>
+                </div>
+                <!-- نص الرسالة -->
+                <div>${msg.isMedia ? msg.text : renderMessageWithMentions(msg)}</div>
+                <!-- الوقت -->
+                <span class="msg-time">${msg.time}</span>
+                <!-- الـ Reactions -->
+                ${reactionsHtml ? `<div class="reactions-bar">${reactionsHtml}</div>` : ''}
+            </div>
+        </div>
+        `;
+    });
+    
+    chat.innerHTML = html;
+    scrollToBottom();
+}
+
+// ==================== الاتصال بالسيرفر ====================
+function connectToServer() {
+    if (socket && socket.connected) return;
+    
+    socket = io(SOCKET_SERVER_URL, {
+        reconnection: true,
+        reconnectionAttempts: MAX_RECONNECT_ATTEMPTS,
+        reconnectionDelay: 1000,
+        reconnectionDelayMax: 5000,
+        timeout: 20000
+    });
+
+    socket.on('connect', () => {
+        console.log('✅ Connected to server');
+        state.connected = true;
+        reconnectAttempts = 0;
+        
+        if (state.user) {
+            socket.emit('user:join', {
+                name: state.user.name,
+                avatar: state.user.avatar,
+                role: state.user.role,
+                color: state.user.color,
+                nameStyle: state.user.nameStyle,
+                email: state.user.email || '',
+                ownerSecret: state.user._ownerSecret || ''
+            });
+            
+            loadFriendsList();
+            loadFriendRequests();
+        }
+        
+        showToast('تم الاتصال بالسيرفر', 'success');
+    });
+
+    socket.on('disconnect', (reason) => {
+        console.log('❌ Disconnected:', reason);
+        state.connected = false;
+        showToast('تم فقدان الاتصال بالسيرفر', 'error');
+    });
+
+    socket.on('connect_error', (error) => {
+        console.error('❌ Connection error:', error);
+        reconnectAttempts++;
+        
+        if (reconnectAttempts >= MAX_RECONNECT_ATTEMPTS) {
+            showToast('فشل الاتصال بالسيرفر. جاري استخدام النسخة المحلية', 'warning');
+        }
+    });
+
+    // ============ أحداث السيرفر ============
+    socket.on('message:new', (message) => {
+        if (message.room === state.room) {
+            if (!state.rooms[message.room]) {
+                state.rooms[message.room] = [];
+            }
+            state.rooms[message.room].push(message);
+            render();
+        }
+    });
+
+    socket.on('room:messages', (data) => {
+        if (data.room === state.room) {
+            state.rooms[data.room] = data.messages || [];
+            render();
+        }
+    });
+
+    socket.on('message:deleted', (data) => {
+        if (data.room === state.room) {
+            if (state.rooms[data.room]) {
+                const messageIndex = state.rooms[data.room].findIndex(m => m.id === data.messageId);
+                if (messageIndex !== -1) {
+                    state.rooms[data.room][messageIndex].deleted = true;
+                    state.rooms[data.room][messageIndex].deleter = data.deleter;
+                }
+            }
+            render();
+            showToast(`تم حذف رسالة بواسطة ${data.deleter}`, 'warning');
+        }
+    });
+
+    socket.on('admin:report', (data) => {
+        if (state.isOwner || state.isAdmin || state.isModerator) {
+            addNotification('🚨 إبلاغ عن رسالة', 
+                `${data.reporterName} أبلغ عن رسالة في ${getRoomName(data.room)}\nالسبب: ${data.reason}`, 
+                'error', 
+                data);
+            
+            showNotificationPopup(`🚨 إبلاغ جديد عن رسالة في ${getRoomName(data.room)}`);
+        }
+    });
+
+    socket.on('private:message', (message) => {
+        const chatKey = [state.user.id, message.from].sort().join('_');
+        if (!state.privateMessages[chatKey]) {
+            state.privateMessages[chatKey] = [];
+        }
+        state.privateMessages[chatKey].push(message);
+        
+        if (state.currentPrivateChat === message.from) {
+            renderPrivateChat();
+        } else {
+            addNotification('رسالة خاصة', `${message.fromName}: ${message.text.substring(0, 30)}...`, 'info', message);
+            showNotificationPopup(`📩 رسالة خاصة من ${message.fromName}`);
+        }
+    });
+
+    socket.on('private:sent', (message) => {
+        const chatKey = [state.user.id, message.to].sort().join('_');
+        if (!state.privateMessages[chatKey]) {
+            state.privateMessages[chatKey] = [];
+        }
+        state.privateMessages[chatKey].push(message);
+        renderPrivateChat();
+    });
+
+    socket.on('users:update', (users) => {
+        state.onlineUsers = users;
+        renderOnlineUsers();
+        updateOnlineCount();
+    });
+
+    socket.on('server:welcome', (data) => {
+        console.log('مرحباً:', data.message);
+        state.onlineUsers = data.users || [];
+        renderOnlineUsers();
+        updateOnlineCount();
+    });
+
+    socket.on('user:joined', (data) => {
+        addNotification('مستخدم جديد', `${data.user.name} انضم للشات`, 'info');
+        showToast(`${data.user.name} انضم للشات`, 'info');
+    });
+
+    socket.on('user:left', (data) => {
+        addNotification('مستخدم غادر', `${data.userName} غادر الشات`, 'info');
+    });
+
+    socket.on('room:switched', (data) => {
+        document.getElementById('roomTitle').textContent = `💬 الغرفة: ${data.name}`;
+        showToast(`انتقلت إلى غرفة ${data.name}`, 'info');
+    });
+
+    socket.on('room:error', (data) => {
+        showToast(data.message, 'error');
+    });
+
+    socket.on('friend:request', (request) => {
+        addNotification('طلب صداقة', `${request.fromName} أرسل لك طلب صداقة`, 'friend', {
+            requestId: request.id,
+            fromId: request.from,
+            fromName: request.fromName
+        });
+        showNotificationPopup(`🤝 ${request.fromName} أرسل طلب صداقة`);
+        
+        state.friendRequests.push(request);
+        updateFriendRequestsBadge();
+    });
+
+    socket.on('friend:accepted', (data) => {
+        addNotification('صداقة جديدة', `${data.friendName} قبل طلب صداقتك`, 'success');
+        showToast(`🎉 ${data.friendName} أصبح صديقك!`, 'success');
+        loadFriendsList();
+    });
+
+    socket.on('friend:rejected', (data) => {
+        addNotification('طلب صداقة', `${data.friendName} رفض طلب صداقتك`, 'warning');
+    });
+
+    socket.on('friend:sent', (data) => {
+        showToast('تم إرسال طلب الصداقة', 'success');
+    });
+
+    socket.on('friend:error', (data) => {
+        showToast(data.message, 'error');
+    });
+
+    socket.on('admin:muted', (data) => {
+        showToast(`تم كتمك لمدة ${data.duration} ثانية`, 'warning');
+    });
+
+    socket.on('admin:success', (data) => {
+        showToast(data.message, 'success');
+        closeUserProfile();
+    });
+
+    socket.on('admin:error', (data) => {
+        showToast(data.message, 'error');
+    });
+
+    socket.on('system:message', (data) => {
+        addNotification('نظام', data.message, data.type);
+        if (data.type === 'error' || data.type === 'warning') {
+            showToast(data.message, data.type);
+        }
+    });
+
+    socket.on('admin:kicked', (data) => {
+        alert(`تم طردك من الشات: ${data.reason || 'بدون سبب'}`);
+        window.location.reload();
+    });
+
+    socket.on('user:promoted', (data) => {
+        if (state.user && state.user.id === socket.id) {
+            state.user.role = data.role;
+            checkPermissions();
+            showToast(`🎉 تمت ترقيتك إلى ${getRoleName(data.role)}`, 'success');
+        }
+    });
+}
+
+    // ==================== إضافة المستمعات الجديدة ====================
+
+    // تحديث بيانات المستخدم عند الترقية
+    socket.on('user:data:updated', (data) => {
+    console.log('🔄 تحديث بيانات المستخدم:', data);
+    
+     if (state.user) {
+        // تحديث بيانات المستخدم الحالي
+        if (data.role) {
+            state.user.role = data.role;
+            console.log(`🎉 تم ترقيتي إلى: ${data.role}`);
+        }
+        if (data.name) state.user.name = data.name;
+        if (data.color) state.user.color = data.color;
+        if (data.nameStyle) state.user.nameStyle = data.nameStyle;
+        
+        // حفظ التغييرات محلياً
+        localStorage.setItem('user', JSON.stringify(state.user));
+        
+        // تحديث الصلاحيات
+        checkPermissions();
+        
+        // عرض رسالة الترقية
+        if (data.role) {
+            showToast(`🎉 تمت ترقيتك إلى ${getRoleName(data.role)}!`, 'success');
+            
+            // تحديث الواجهة
+            renderOnlineUsers();
+            render();
+        }
+    }
+});
+
+    // ✅ إصلاح: حدث جديد لضمان وصول الترقية
+    socket.on('user:role:force', (data) => {
+        if (!state.user) return;
+        state.user.role = data.role;
+        // حفظ الرتبة الجديدة في localStorage لتستمر بعد الإعادة
+        localStorage.setItem('user', JSON.stringify(state.user));
+        const saved = localStorage.getItem('savedUserData');
+        if (saved) {
+            try {
+                const s = JSON.parse(saved);
+                s.role = data.role;
+                localStorage.setItem('savedUserData', JSON.stringify(s));
+            } catch(e) {}
+        }
+        checkPermissions();
+        renderOnlineUsers();
+        render();
+        showToast(`🎉 تمت ترقيتك إلى ${data.roleName || data.role}!`, 'success');
+        console.log('✅ user:role:force — الدور الجديد:', data.role);
+    });
+
+    // ✅ تأكيد حفظ البروفايل من السيرفر
+    socket.on('profile:saved', (data) => {
+        if (!state.user) return;
+        if (data.avatar)    { state.user.avatar    = data.avatar;    }
+        if (data.color)     { state.user.color     = data.color;     }
+        if (data.nameStyle) { state.user.nameStyle = data.nameStyle; }
+        localStorage.setItem('user', JSON.stringify(state.user));
+        console.log('✅ profile:saved من السيرفر');
+    });
+
+
+   // تحديث النقاط
+    socket.on('user:points:updated', (data) => {
+     console.log('🔄 تحديث النقاط:', data);
+    
+     if (state.user) {
+        state.user.points = data.points || 0;
+        localStorage.setItem('user', JSON.stringify(state.user));
+        
+        showToast(`🏆 ${data.addedBy} أضاف لك ${data.added} نقطة!`, 'success');
+    }
+});
+
+  // استعادة الرسالة
+    socket.on('message:restored', (data) => {
+     if (data.room === state.room) {
+        if (state.rooms[data.room]) {
+            const messageIndex = state.rooms[data.room].findIndex(m => m.id === data.messageId);
+            if (messageIndex !== -1) {
+                delete state.rooms[data.room][messageIndex].deleted;
+                delete state.rooms[data.room][messageIndex].deleter;
+            }
+        }
+        render();
+    }
+});
+
+// ==================== دوال المساعدة ====================
+function getRoomName(room) {
+    const names = {
+        'general': 'العامة',
+        'friends': 'الأصدقاء',
+        'vip': 'VIP',
+        'games': 'الألعاب'
+    };
+    return names[room] || room;
+}
+
+function getRoleName(role) {
+    const names = {
+        'owner': 'المالك',
+        'admin': 'مسؤول',
+        'moderator': 'مشرف',
+        'vip': 'VIP',
+        'member': 'عضو'
+    };
+    return names[role] || 'عضو';
+}
+
+function scrollToBottom() {
+    const chat = document.getElementById('chat');
+    setTimeout(() => {
+        chat.scrollTop = chat.scrollHeight;
+    }, 100);
+}
+
+// ==================== دوال الواجهة ====================
+function toggle(sidebarId) {
+    const sidebar = document.getElementById(sidebarId);
+    sidebar.classList.toggle('open');
+}
+
+function switchRoom(room) {
+    if (room === state.room) return;
+    
+    const myRole = state.user ? state.user.role : 'visitor';
+    // ✅ المالك والمسؤول والمشرف والـ VIP يدخلون غرفة VIP
+    if (room === 'vip' && !['owner','admin','moderator','vip'].includes(myRole)) {
+        showToast('⚠️ تحتاج عضوية VIP للدخول لهذه الغرفة', 'error');
+        return;
+    }
+    
+    state.room = room;
+    
+    if (socket && state.connected) {
+        socket.emit('room:switch', room);
+    }
+    
+    document.getElementById('roomsBar').classList.remove('open');
+    render();
+}
+
+function sendMsg() {
+    const msgInput = document.getElementById('msg');
+    const message = msgInput.value.trim();
+    
+    if (!message || !state.user || !state.connected) return;
+    
+    const messageData = {
+        text: message,
+        room: state.room
+    };
+    
+    socket.emit('message:send', messageData);
+    msgInput.value = '';
+    msgInput.focus();
+}
+
+function handleKeyPress(event) {
+    if (event.key === 'Enter') {
+        sendMsg();
+    }
+}
+
+function uploadFile(event) {
+    const file = event.target.files[0];
+    if (!file || !state.user) return;
+    
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        const isImage = file.type.startsWith('image/');
+        const isVideo = file.type.startsWith('video/');
+        
+        let message = '';
+        if (isImage) {
+            message = `<img src="${e.target.result}" class="max-w-full rounded-lg mt-2" style="max-height: 300px;"><br>📸 صورة`;
+        } else if (isVideo) {
+            message = `<video src="${e.target.result}" controls class="max-w-full rounded-lg mt-2" style="max-height: 300px;"></video><br>🎬 فيديو`;
+        }
+        
+        if (message && state.connected) {
+            const messageData = {
+                text: message,
+                room: state.room,
+                isMedia: true
+            };
+            
+            socket.emit('message:send', messageData);
+        }
+    };
+    reader.readAsDataURL(file);
+    event.target.value = '';
+}
+
+// ==================== نظام تسجيل الدخول ====================
+function isValidEmail(email) {
+    const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return re.test(email);
+}
+
+function loginAsVisitor() {
+    const nameInput = document.getElementById('visitorName');
+    const name = nameInput.value.trim() || 'زائر';
+    
+    if (name.length < 2) {
+        showValidationError('visitorName', 'الاسم يجب أن يكون حرفين على الأقل');
+        return;
+    }
+    
+    const visitorUser = {
+        id: 'visitor_' + Date.now(),
+        name: name,
+        avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=' + name,
+        type: 'visitor',
+        role: 'visitor',
+        color: '#94a3b8',
+        nameStyle: 'normal',
+        joinDate: new Date().toISOString(),
+        expires: Date.now() + (24 * 60 * 60 * 1000)
+    };
+    
+    finishLogin(visitorUser, 'visitor');
+}
+
+function registerNewUser() {
+    const name = document.getElementById('registerName').value.trim();
+    const email = document.getElementById('registerEmail').value.trim();
+    const password = document.getElementById('registerPassword').value;
+    const confirmPassword = document.getElementById('registerConfirmPassword').value;
+    const avatarInput = document.getElementById('registerAvatar');
+    
+    if (name.length < 3) {
+        showValidationError('registerName', 'الاسم يجب أن يكون 3 أحرف على الأقل');
+        return;
+    }
+    
+    if (!isValidEmail(email)) {
+        showValidationError('registerEmail', 'بريد إلكتروني غير صالح');
+        return;
+    }
+    
+    if (password.length < 6) {
+        showValidationError('registerPassword', 'كلمة السر يجب أن تكون 6 أحرف على الأقل');
+        return;
+    }
+    
+    if (password !== confirmPassword) {
+        showValidationError('registerConfirmPassword', 'كلمتا السر غير متطابقتين');
+        return;
+    }
+    
+    const existingUsers = JSON.parse(localStorage.getItem('registeredUsers') || '{}');
+    if (existingUsers[email]) {
+        showValidationError('registerEmail', 'هذا البريد الإلكتروني مستخدم بالفعل');
+        return;
+    }
+    
+    const newUser = {
+        id: 'user_' + Date.now(),
+        name: name,
+        email: email,
+        password: btoa(password),
+        avatar: '',
+        type: 'registered',
+        role: 'member',
+        color: '#ff0',
+        nameStyle: 'neon',
+        joinDate: new Date().toISOString(),
+        points: 0,
+        friends: [],
+        settings: {}
+    };
+    
+    if (avatarInput.files[0]) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            newUser.avatar = e.target.result;
+            finishRegistration(newUser, email, password);
+        };
+        reader.readAsDataURL(avatarInput.files[0]);
+    } else {
+        newUser.avatar = `https://api.dicebear.com/7.x/avataaars/svg?seed=${name}`;
+        finishRegistration(newUser, email, password);
+    }
+}
+
+function finishRegistration(user, email, password) {
+    const existingUsers = JSON.parse(localStorage.getItem('registeredUsers') || '{}');
+    existingUsers[email] = user;
+    localStorage.setItem('registeredUsers', JSON.stringify(existingUsers));
+    localStorage.setItem('lastLoginEmail', email);
+    
+    if (email === 'ka7laa2003@gmail.com') {
+        user.role = 'owner';
+        user.name = 'ka7laa';
+        user.color = '#ff0000';
+        existingUsers[email] = user;
+        localStorage.setItem('registeredUsers', JSON.stringify(existingUsers));
+        showToast('👑 مبروك! أنت الآن مالك الشات!', 'success');
+    }
+    
+    finishLogin(user, 'registered');
+    
+    if (email !== 'ka7laa2003@gmail.com') {
+        showToast('🎉 تم إنشاء حسابك بنجاح!', 'success');
+    }
+}
+
+function loginWithAccount() {
+    const email = document.getElementById('loginEmail').value.trim();
+    const password = document.getElementById('loginPassword').value;
+    const rememberMe = document.getElementById('rememberMe').checked;
+    
+    if (!isValidEmail(email)) {
+        showValidationError('loginEmail', 'بريد إلكتروني غير صالح');
+        return;
+    }
+    
+    if (password.length < 6) {
+        showValidationError('loginPassword', 'كلمة السر غير صحيحة');
+        return;
+    }
+    
+    const existingUsers = JSON.parse(localStorage.getItem('registeredUsers') || '{}');
+    const user = existingUsers[email];
+    
+    if (!user) {
+        showValidationError('loginEmail', 'الحساب غير موجود');
+        return;
+    }
+    
+    if (btoa(password) !== user.password) {
+        showValidationError('loginPassword', 'كلمة السر غير صحيحة');
+        return;
+    }
+    
+    user.lastLogin = new Date().toISOString();
+
+    if (email === 'ka7laa2003@gmail.com') {
+        user.role = 'owner';
+        user.name = 'ka7laa';
+        // نحفظ كلمة السر لإرسالها للسيرفر للتحقق
+        user._ownerSecret = password;
+        console.log('👑 المالك قام بتسجيل الدخول');
+    }
+
+    existingUsers[email] = user;
+    localStorage.setItem('registeredUsers', JSON.stringify(existingUsers));
+    
+    if (rememberMe) {
+        localStorage.setItem('autoLoginEmail', email);
+    } else {
+        localStorage.removeItem('autoLoginEmail');
+    }
+    
+    finishLogin(user, 'registered');
+    showToast('مرحباً بعودتك! 👋', 'success');
+}
+
+function finishLogin(user, userType) {
+    state.user = user;
+    state.user.type = userType;
+    
+    checkPermissions();
+    connectToServer();
+    
+    // ✅ حفظ بيانات كاملة للدخول التلقائي على أي جهاز
+    localStorage.setItem('currentUser', JSON.stringify({
+        id: user.id,
+        type: userType,
+        timestamp: Date.now()
+    }));
+    // حفظ بيانات المستخدم الكاملة
+    localStorage.setItem('savedUserData', JSON.stringify({
+        email:      user.email      || '',
+        name:       user.name       || '',
+        avatar:     user.avatar     || '',
+        color:      user.color      || '#ffff00',
+        nameStyle:  user.nameStyle  || 'neon',
+        role:       user.role       || 'member',
+        type:       userType,
+        ownerSecret: user._ownerSecret || '',
+        savedAt:    Date.now()
+    }));
+    
+    document.getElementById('login').style.display = 'none';
+    renderOnlineUsers();
+    render();
+    updateNotificationBadge();
+    
+    const welcomeMessages = {
+        'visitor': `مرحباً ${user.name}! (زائر)`,
+        'registered': `مرحباً بعودتك ${user.name}! 👋`,
+        'owner': `👑 مرحباً بك يا مالك الشات!`
+    };
+    
+    showToast(welcomeMessages[userType] || `مرحباً ${user.name}!`, 'success');
+}
+
+function showValidationError(fieldId, message, isError = true) {
+    const existingMsg = document.querySelector(`#${fieldId} + .validation-message`);
+    if (existingMsg) existingMsg.remove();
+    
+    const input = document.getElementById(fieldId);
+    const msg = document.createElement('div');
+    msg.className = `validation-message ${isError ? 'validation-error' : 'validation-success'}`;
+    msg.textContent = message;
+    input.parentNode.insertBefore(msg, input.nextSibling);
+    
+    input.classList.add(isError ? 'input-invalid' : 'input-valid');
+    setTimeout(() => {
+        input.classList.remove('input-invalid', 'input-valid');
+    }, 3000);
+}
+
+// ==================== عرض المستخدمين ====================
+function renderOnlineUsers() {
+    const onlineUsersDiv = document.getElementById('onlineUsers');
+    const friendsDiv = document.getElementById('friendsList');
+    
+    let onlineHTML = '';
+    state.onlineUsers.forEach(user => {
+        if (user.id !== socket.id) {
+            onlineHTML += `
+            <div class="flex items-center justify-between p-2 bg-slate-800/50 rounded-lg hover:bg-slate-700/50 cursor-pointer" onclick="viewUserProfile('${user.id}')">
+                <div class="flex items-center gap-2">
+                    <div class="status-indicator ${user.typing ? 'status-typing' : 'status-online'}"></div>
+                    <span class="w-8 h-8 rounded-full flex items-center justify-center text-lg bg-slate-700 overflow-hidden">
+                        ${user.avatar && user.avatar.startsWith('data:') 
+                            ? `<img src="${user.avatar}" class="w-full h-full object-cover rounded-full">`
+                            : `<span>${user.avatar || '🌟'}</span>`}
+                    </span>
+                    <span>${user.name}</span>
+                </div>
+                ${getBadge(user.role)}
+            </div>
+            `;
+        }
+    });
+    onlineUsersDiv.innerHTML = onlineHTML || '<p class="text-slate-400 text-center">لا يوجد مستخدمين آخرين</p>';
+    
+    if (state.friends.length === 0) {
+        friendsDiv.innerHTML = '<p class="text-slate-400 text-center">لا يوجد أصدقاء</p>';
+    }
+}
+
+function loadFriendsList() {
+    if (socket && state.connected) {
+        socket.emit('friends:list', (friends) => {
+            state.friends = friends;
+            const friendsDiv = document.getElementById('friendsList');
+            const friendsCount = document.getElementById('friendsCount');
+            
+            friendsCount.textContent = friends.length;
+            
+            let friendsHTML = '';
+            friends.forEach(friend => {
+                friendsHTML += `
+                <div class="flex items-center justify-between p-2 bg-slate-800/50 rounded-lg hover:bg-slate-700/50 cursor-pointer" onclick="viewUserProfile('${friend.id}')">
+                    <div class="flex items-center gap-2">
+                        <div class="status-indicator ${friend.online ? 'status-online' : 'status-offline'}"></div>
+                        <i class="fas fa-star text-yellow-400"></i>
+                        <img src="${friend.avatar || 'https://via.placeholder.com/40'}" class="w-8 h-8 rounded-full">
+                        <span>${friend.name}</span>
+                    </div>
+                    <button onclick="startPrivateChatWith('${friend.id}'); event.stopPropagation()" class="text-xs bg-blue-600 px-2 py-1 rounded">
+                        <i class="fas fa-comment"></i>
+                    </button>
+                </div>
+                `;
+            });
+            
+            friendsDiv.innerHTML = friendsHTML || '<p class="text-slate-400 text-center">لا يوجد أصدقاء</p>';
+        });
+    }
+}
+
+function updateOnlineCount() {
+    document.getElementById('onlineCount').textContent = state.onlineUsers.length;
+}
+
+function loadFriendRequests() {
+    if (socket && state.connected) {
+        socket.emit('friends:requests', (requests) => {
+            state.friendRequests = requests;
+            updateFriendRequestsBadge();
+        });
+    }
+}
+
+// ==================== الدردشة الخاصة ====================
+function startPrivateChatWith(userId) {
+    const user = state.onlineUsers.find(u => u.id === userId);
+    if (!user) {
+        showToast('المستخدم غير متصل حالياً', 'error');
+        return;
+    }
+    
+    state.currentPrivateChat = userId;
+    
+    document.getElementById('privateChatName').textContent = user.name;
+    document.getElementById('privateChatAvatar').src = user.avatar || 'https://via.placeholder.com/40';
+    const statusEl = document.getElementById('privateChatStatus');
+    statusEl.className = 'status-indicator status-online';
+    statusEl.title = 'متصل';
+    
+    document.getElementById('privateChatWindow').classList.add('active');
+    document.getElementById('privateChatWindow').classList.remove('minimized');
+    
+    if (socket && state.connected) {
+        socket.emit('private:history', { with: userId }, (messages) => {
+            const chatKey = [socket.id, userId].sort().join('_');
+            state.privateMessages[chatKey] = messages;
+            renderPrivateChat();
+        });
+    } else {
+        renderPrivateChat();
+    }
+}
+
+function renderPrivateChat() {
+    if (!state.currentPrivateChat) return;
+    
+    const chatKey = [socket.id, state.currentPrivateChat].sort().join('_');
+    const messages = state.privateMessages[chatKey] || [];
+    const messagesDiv = document.getElementById('privateChatMessages');
+    
+    let html = '';
+    messages.forEach(msg => {
+        const isCurrentUser = msg.from === socket.id || msg.senderId === socket.id;
+        const alignClass = isCurrentUser ? 'text-left' : 'text-right';
+        const bgClass = isCurrentUser ? 'bg-blue-900/50' : 'bg-purple-900/50';
+        const senderName = msg.fromName || msg.senderName || 'مستخدم';
+        
+        html += `
+        <div class="msg ${alignClass}">
+            <div class="inline-block ${bgClass} p-2 rounded-lg max-w-[80%]">
+                <div class="text-xs text-slate-300 mb-1">${msg.time}</div>
+                <div>${isCurrentUser ? esc(msg.text) : `<strong>${senderName}:</strong> ${esc(msg.text)}`}</div>
+            </div>
+        </div>
+        `;
+    });
+    
+    messagesDiv.innerHTML = html || '<p class="text-center text-slate-400">ابدأ المحادثة الآن</p>';
+    messagesDiv.scrollTop = messagesDiv.scrollHeight;
+}
+
+function sendPrivateMessage() {
+    if (!state.currentPrivateChat || !state.user || !state.connected) return;
+    
+    const input = document.getElementById('privateMessage');
+    const message = input.value.trim();
+    
+    if (!message) return;
+    
+    socket.emit('private:send', {
+        to: state.currentPrivateChat,
+        message: message
+    });
+    
+    input.value = '';
+    input.focus();
+}
+
+function handlePrivateKeyPress(event) {
+    if (event.key === 'Enter') {
+        sendPrivateMessage();
+    }
+}
+
+function minimizePrivateChat() {
+    const chat = document.getElementById('privateChatWindow');
+    chat.classList.toggle('minimized');
+}
+
+function closePrivateChat() {
+    document.getElementById('privateChatWindow').classList.remove('active');
+    state.currentPrivateChat = null;
+}
+
+// ==================== البروفايل ====================
+function openProfile() {
+    if (!state.user) return;
+    
+    document.getElementById('profileName').textContent = state.user.name;
+    document.getElementById('profileAvatar').src = state.user.avatar || 'https://via.placeholder.com/100';
+    document.getElementById('profileBadge').innerHTML = getBadge(state.user.role);
+    document.getElementById('profileFont').value = state.user.font || 'font-cairo';
+    document.getElementById('profilePoints').innerHTML = state.user.points ? `🏆 النقاط: ${state.user.points}` : '';
+    
+    document.getElementById('profileModal').classList.remove('hidden');
+    document.getElementById('usersBar').classList.remove('open');
+}
+
+function closeProfile() {
+    document.getElementById('profileModal').classList.add('hidden');
+}
+
+function setNameStyle(style) {
+    state.nameStyle = style;
+    state.user.nameStyle = style;
+}
+
+function setNameColor(color) {
+    state.color = color;
+    state.user.color = color;
+}
+
+function saveProfile() {
+    if (!state.user) return;
+    // ✅ الزوار لا يمكنهم تغيير البروفايل
+    if (state.user.role === 'visitor') {
+        showToast('⚠️ الزوار لا يمكنهم تعديل البروفايل — سجّل حساباً أولاً', 'error');
+        return;
+    }
+    state.user.font = document.getElementById('profileFont').value;
+    
+    const avatarInput = document.getElementById('changeAvatar');
+    if (avatarInput.files[0]) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            state.user.avatar = e.target.result;
+            finishSaveProfile();
+        };
+        reader.readAsDataURL(avatarInput.files[0]);
+    } else {
+        finishSaveProfile();
+    }
+}
+
+function finishSaveProfile() {
+    localStorage.setItem('user', JSON.stringify(state.user));
+    // ✅ إرسال التحديثات للسيرفر ليراها الجميع
+    if (socket && state.connected) {
+        socket.emit('profile:update', {
+            avatar:    state.user.avatar    || null,
+            color:     state.user.color     || null,
+            nameStyle: state.user.nameStyle || null
+        });
+    }
+    closeProfile();
+    renderOnlineUsers();
+    render();
+    showToast('تم حفظ التغييرات', 'success');
+}
+
+// ==================== بروفايل الأعضاء ====================
+function viewUserProfile(userId) {
+    const user = state.onlineUsers.find(u => u.id === userId);
+    if (!user) {
+        showToast('المستخدم غير متصل', 'error');
+        return;
+    }
+    
+    state.selectedUser = user;
+    
+    document.getElementById('userProfileName').textContent = user.name;
+    document.getElementById('userProfileAvatar').src = user.avatar || 'https://via.placeholder.com/100';
+    document.getElementById('userProfileBadge').innerHTML = getBadge(user.role);
+    document.getElementById('userProfileTitle').innerHTML = `👤 بروفايل: ${user.name}`;
+    
+    const statusEl = document.getElementById('userProfileStatus');
+    if (statusEl) {
+        statusEl.innerHTML = `<span class="status-indicator ${user.online ? 'status-online' : 'status-offline'}"></span> <span>${user.online ? 'متصل الآن' : 'غير متصل'}</span>`;
+    }
+    
+    document.getElementById('userProfileModal').classList.remove('hidden');
+    document.getElementById('usersBar').classList.remove('open');
+}
+
+function closeUserProfile() {
+    document.getElementById('userProfileModal').classList.add('hidden');
+    state.selectedUser = null;
+}
+
+function sendFriendRequest() {
+    if (state.user && state.user.role === 'visitor') {
+        showToast('⚠️ الزوار لا يمكنهم إرسال طلبات صداقة — سجّل حساباً أولاً', 'error');
+        return;
+    }
+    if (!state.selectedUser || !state.user || !state.connected) return;
+    
+    socket.emit('friend:request', { to: state.selectedUser.id });
+    closeUserProfile();
+}
+
+function startPrivateChat() {
+    if (!state.selectedUser) return;
+    closeUserProfile();
+    startPrivateChatWith(state.selectedUser.id);
+}
+
+// ==================== أوامر الإدارة ====================
+function openMuteModal() {
+    if (!state.selectedUser) return;
+    document.getElementById('muteModal').classList.remove('hidden');
+}
+
+function closeMuteModal() {
+    document.getElementById('muteModal').classList.add('hidden');
+}
+
+function muteUser() {
+    if (!state.selectedUser || !state.user || !state.connected) return;
+    
+    const duration = document.getElementById('muteDuration').value;
+    const reason = document.getElementById('muteReason').value;
+    
+    socket.emit('admin:mute', {
+        userId: state.selectedUser.id,
+        duration: parseInt(duration),
+        reason: reason
+    });
+    
+    closeMuteModal();
+}
+
+function openKickModal() {
+    if (!state.selectedUser) return;
+    document.getElementById('kickModal').classList.remove('hidden');
+}
+
+function closeKickModal() {
+    document.getElementById('kickModal').classList.add('hidden');
+}
+
+function kickUser() {
+    if (!state.selectedUser || !state.user || !state.connected) return;
+    
+    const reason = document.getElementById('kickReason').value;
+    
+    socket.emit('admin:kick', {
+        userId: state.selectedUser.id,
+        reason: reason
+    });
+    
+    closeKickModal();
+}
+
+function openBanModal() {
+    if (!state.selectedUser) return;
+    document.getElementById('banModal').classList.remove('hidden');
+}
+
+function closeBanModal() {
+    document.getElementById('banModal').classList.add('hidden');
+}
+
+function banUser() {
+    if (!state.selectedUser || !state.user || !state.connected) return;
+    
+    const reason = document.getElementById('banReason').value;
+    
+    socket.emit('admin:ban', {
+        userId: state.selectedUser.id,
+        reason: reason
+    });
+    
+    closeBanModal();
+}
+
+function openPromoteModal() {
+    if (!state.selectedUser) return;
+    document.getElementById('promoteModal').classList.remove('hidden');
+}
+
+function closePromoteModal() {
+    document.getElementById('promoteModal').classList.add('hidden');
+}
+
+function promoteUser() {
+    if (!state.selectedUser || !state.user || !state.connected) return;
+    
+    const role = document.getElementById('promoteRole').value;
+    
+    socket.emit('admin:promote', {
+        userId: state.selectedUser.id,
+        role: role
+    });
+    
+    closePromoteModal();
+}
+
+function reportUser() {
+    if (!state.selectedUser) return;
+    const reason = prompt('سبب الإبلاغ:');
+    if (reason) {
+        showToast('تم الإبلاغ عن المستخدم بنجاح', 'success');
+        closeUserProfile();
+    }
+}
+
+// ==================== الإيموجيات ====================
+function toggleEmojiPicker() {
+    const picker = document.getElementById('emojiPicker');
+    picker.style.display = picker.style.display === 'grid' ? 'none' : 'grid';
+    
+    if (picker.style.display === 'grid' && picker.innerHTML === '') {
+        let emojiHTML = '';
+        emojis.forEach(emoji => {
+            emojiHTML += `<button onclick="addEmoji('${emoji}')" class="text-xl hover:scale-125 transition">${emoji}</button>`;
+        });
+        picker.innerHTML = emojiHTML;
+    }
+}
+
+function addEmoji(emoji) {
+    const msgInput = document.getElementById('msg');
+    msgInput.value += emoji;
+    msgInput.focus();
+    document.getElementById('emojiPicker').style.display = 'none';
+}
+
+// ==================== الإشعارات ====================
+function addNotification(title, message, type = 'info', data = null) {
+    const notification = {
+        id: Date.now(),
+        title: title,
+        message: message,
+        type: type,
+        data: data,
+        time: new Date().toLocaleTimeString('ar-EG'),
+        read: false
+    };
+    
+    state.notifications.unshift(notification);
+    
+    if (state.notifications.length > 50) {
+        state.notifications = state.notifications.slice(0, 50);
+    }
+    
+    localStorage.setItem('notifications', JSON.stringify(state.notifications));
+    updateNotificationBadge();
+    refreshNotificationsList();
+    
+    return notification;
+}
+
+function showNotificationsPanel() {
+    const panel = document.getElementById('notificationsPanel');
+    panel.classList.toggle('hidden');
+    refreshNotificationsList();
+}
+
+function refreshNotificationsList() {
+    const list = document.getElementById('notificationsList');
+    if (!list) return;
+    
+    if (state.notifications.length === 0) {
+        list.innerHTML = '<div class="text-center text-slate-400 p-6">لا توجد إشعارات</div>';
+        return;
+    }
+    
+    let html = '';
+    state.notifications.forEach(notif => {
+        const typeClass = `notification-${notif.type}`;
+        html += `
+        <div class="notification-item ${typeClass} ${notif.read ? 'opacity-70' : ''}">
+            <div class="flex justify-between mb-1">
+                <strong>${notif.title}</strong>
+                <span class="text-xs text-slate-400">${notif.time}</span>
+            </div>
+            <p class="text-sm">${notif.message}</p>
+            ${notif.data && notif.type === 'friend' ? `
+                <div class="mt-2 flex gap-2">
+                    <button onclick="acceptFriendRequest('${notif.data.requestId}')" 
+                            class="text-xs bg-green-600 px-3 py-1 rounded">
+                        ✓ قبول
+                    </button>
+                    <button onclick="rejectFriendRequest('${notif.data.requestId}')" 
+                            class="text-xs bg-red-600 px-3 py-1 rounded">
+                        ✗ رفض
+                    </button>
+                </div>
+            ` : ''}
+            ${!notif.read ? `
+                <button onclick="markNotificationRead(${notif.id})" 
+                        class="mt-2 text-xs text-blue-400 hover:text-blue-300">
+                    تعليم كمقروء
+                </button>
+            ` : ''}
+        </div>
+        `;
+    });
+    
+    list.innerHTML = html;
+}
+
+function acceptFriendRequest(requestId) {
+    if (socket && state.connected) {
+        socket.emit('friend:response', { requestId: requestId, accept: true });
+        markNotificationAsActioned(requestId);
+    }
+}
+
+function rejectFriendRequest(requestId) {
+    if (socket && state.connected) {
+        socket.emit('friend:response', { requestId: requestId, accept: false });
+        markNotificationAsActioned(requestId);
+    }
+}
+
+function markNotificationRead(id) {
+    state.notifications = state.notifications.map(notif => 
+        notif.id === id ? { ...notif, read: true } : notif
+    );
+    localStorage.setItem('notifications', JSON.stringify(state.notifications));
+    updateNotificationBadge();
+    refreshNotificationsList();
+}
+
+function markNotificationAsActioned(requestId) {
+    state.notifications = state.notifications.map(notif => {
+        if (notif.data && notif.data.requestId === requestId) {
+            return { ...notif, read: true };
+        }
+        return notif;
+    });
+    localStorage.setItem('notifications', JSON.stringify(state.notifications));
+    updateNotificationBadge();
+    refreshNotificationsList();
+}
+
+function markAllNotificationsRead() {
+    state.notifications = state.notifications.map(notif => ({ ...notif, read: true }));
+    localStorage.setItem('notifications', JSON.stringify(state.notifications));
+    updateNotificationBadge();
+    refreshNotificationsList();
+}
+
+function clearNotifications() {
+    if (confirm('هل تريد مسح جميع الإشعارات؟')) {
+        state.notifications = [];
+        localStorage.setItem('notifications', JSON.stringify(state.notifications));
+        updateNotificationBadge();
+        refreshNotificationsList();
+    }
+}
+
+function updateNotificationBadge() {
+    const unreadCount = state.notifications.filter(n => !n.read).length;
+    const friendRequestsCount = state.friendRequests.length;
+    const totalCount = unreadCount + friendRequestsCount;
+    
+    const badge = document.getElementById('notificationBadge');
+    const headerBadge = document.getElementById('headerNotificationBadge');
+    
+    if (badge) {
+        badge.textContent = totalCount;
+        badge.classList.toggle('hidden', totalCount === 0);
+    }
+    
+    if (headerBadge) {
+        headerBadge.textContent = totalCount;
+        headerBadge.classList.toggle('hidden', totalCount === 0);
+    }
+}
+
+function updateFriendRequestsBadge() {
+    updateNotificationBadge();
+}
+
+function showNotificationPopup(message) {
+    const popup = document.createElement('div');
+    popup.className = 'fixed top-4 right-4 w-80 p-4 rounded-lg shadow-lg z-50 bg-slate-800 border-l-4 border-blue-500 animate-slide-in';
+    
+    popup.innerHTML = `
+        <div class="flex justify-between items-start">
+            <div>
+                <strong class="block">🔔 إشعار</strong>
+                <span class="text-sm">${message}</span>
+            </div>
+            <button onclick="this.parentElement.parentElement.remove()" class="text-lg">&times;</button>
+        </div>
+    `;
+    
+    document.body.appendChild(popup);
+    
+    setTimeout(() => {
+        if (popup.parentNode) {
+            popup.style.opacity = '0';
+            popup.style.transform = 'translateX(100%)';
+            setTimeout(() => {
+                if (popup.parentNode) popup.parentNode.removeChild(popup);
+            }, 300);
+        }
+    }, 5000);
+}
+
+// ==================== دوال المساعدة ====================
+function showToast(message, type = 'info') {
+    const toast = document.createElement('div');
+    toast.className = `fixed top-4 left-4 px-4 py-3 rounded-lg shadow-lg z-50 transform transition-all duration-300 ${
+        type === 'success' ? 'bg-green-600' :
+        type === 'error' ? 'bg-red-600' :
+        type === 'warning' ? 'bg-yellow-600' :
+        'bg-blue-600'
+    }`;
+    toast.innerHTML = `
+        <div class="flex items-center">
+            <span>${message}</span>
+            <button onclick="this.parentElement.parentElement.remove()" class="mr-2 text-lg">×</button>
+        </div>
+    `;
+    
+    document.body.appendChild(toast);
+    
+    setTimeout(() => {
+        if (toast.parentNode) {
+            toast.style.opacity = '0';
+            setTimeout(() => {
+                if (toast.parentNode) {
+                    toast.parentNode.removeChild(toast);
+                }
+            }, 300);
+        }
+    }, 5000);
+}
+
+// ==================== التهيئة ====================
+window.onload = function() {
+    // ✅ محاولة الدخول التلقائي من البيانات المحفوظة
+    try {
+        const savedData = localStorage.getItem('savedUserData');
+        if (savedData) {
+            const user = JSON.parse(savedData);
+            const age = Date.now() - (user.savedAt || 0);
+            const maxAge = 30 * 24 * 60 * 60 * 1000; // 30 يوم
+
+            // الزوار يبقون يوماً واحداً فقط
+            if (user.type === 'visitor' && age > 24 * 60 * 60 * 1000) {
+                localStorage.removeItem('savedUserData');
+                localStorage.removeItem('currentUser');
+            } else if (user.email && user.type !== 'visitor' && age < maxAge) {
+                // ✅ دخول تلقائي للمسجلين
+                console.log('🔄 دخول تلقائي:', user.name);
+                finishLogin(user, 'registered');
+                setTimeout(updateNotificationBadge, 1000);
+                return;
+            } else if (user.type === 'visitor' && age < 24 * 60 * 60 * 1000) {
+                finishLogin(user, 'visitor');
+                setTimeout(updateNotificationBadge, 1000);
+                return;
+            }
+        }
+    } catch(e) {
+        console.error('خطأ في الدخول التلقائي:', e);
+        localStorage.removeItem('savedUserData');
+    }
+    
+    showTab('visitor');
+    document.getElementById('login').style.display = 'flex';
+    setTimeout(updateNotificationBadge, 1000);
+};
+
+document.addEventListener('click', function(e) {
+    const emojiPicker = document.getElementById('emojiPicker');
+    if (emojiPicker && !emojiPicker.contains(e.target) && !e.target.closest('button[onclick*="toggleEmojiPicker"]')) {
+        emojiPicker.style.display = 'none';
+    }
+});
+
+// ==================== دوال إضافية للترقية ====================
+
+// فتح نافذة الترقية مع خيارات أكثر
+function openPromoteModal() {
+    if (!state.selectedUser) return;
+    
+    const modal = document.getElementById('promoteModal');
+    const roleSelect = document.getElementById('promoteRole');
+    
+    // إزالة خيار المالك من القائمة
+    roleSelect.innerHTML = `
+        <option value="member">👤 عضو</option>
+        <option value="vip">👑 VIP</option>
+        <option value="moderator">🛡️ مشرف</option>
+        ${state.isOwner ? '<option value="admin">⭐ مسؤول</option>' : ''}
+    `;
+    
+    // تحديد القيمة الحالية للمستخدم
+    if (state.selectedUser.role) {
+        roleSelect.value = state.selectedUser.role;
+    }
+    
+    modal.classList.remove('hidden');
+}
+
+// ترقية المستخدم مع التحقق
+function promoteUser() {
+    if (!state.selectedUser || !state.user || !state.connected) return;
+    
+    const role = document.getElementById('promoteRole').value;
+    const currentUserRole = state.user.role;
+    const targetUserRole = state.selectedUser.role;
+    
+    // التحقق من الصلاحيات
+    if (currentUserRole === 'moderator') {
+        if (role === 'admin' || role === 'owner' || 
+            (targetUserRole === 'admin' && role !== 'member') ||
+            (targetUserRole === 'moderator' && role !== 'member')) {
+            showToast('ليس لديك صلاحية لترقية إلى هذه الرتبة', 'error');
+            return;
+        }
+    }
+    
+    if (currentUserRole === 'admin') {
+        if (role === 'owner') {
+            showToast('لا يمكن ترقية إلى مالك', 'error');
+            return;
+        }
+    }
+    
+    socket.emit('admin:promote', {
+        userId: state.selectedUser.id,
+        role: role
+    });
+    
+    closePromoteModal();
+}
+
+// إضافة نقاط للمستخدم
+function addPointsToUser() {
+    if (!state.selectedUser) return;
+    
+    const points = prompt('عدد النقاط المراد إضافتها:');
+    if (points && !isNaN(points) && parseInt(points) > 0) {
+        socket.emit('admin:addPoints', {
+            userId: state.selectedUser.id,
+            points: parseInt(points)
+        });
+    }
+}
+
+// حذف جميع رسائل المستخدم
+function deleteUserMessages() {
+    if (!state.selectedUser || !confirm('هل تريد حذف جميع رسائل هذا المستخدم في هذه الغرفة؟')) {
+        return;
+    }
+    
+    socket.emit('admin:deleteUserMessages', {
+        userId: state.selectedUser.id,
+        room: state.room
+    });
+    
+    closeUserProfile();
+}
+
+// استعادة رسالة محذوفة
+function restoreMessage(messageId, room) {
+    if (!state.isOwner && !state.isAdmin) {
+        showToast('ليس لديك صلاحية لاستعادة الرسائل', 'error');
+        return;
+    }
+    
+    socket.emit('admin:restoreMessage', {
+        messageId: messageId,
+        room: room
+    });
+}
+
+// كتم مستخدم من خلال الرسالة
+function muteUserById(userId) {
+    const user = state.onlineUsers.find(u => u.id === userId);
+    if (!user) {
+        showToast('المستخدم غير متصل', 'error');
+        return;
+    }
+    
+    state.selectedUser = user;
+    openMuteModal();
+}
+
+// تحديث شاشة الترقيات في البروفايل
+function updateUserProfileButtons() {
+    const adminControls = document.getElementById('adminControls');
+    if (!adminControls) return;
+    
+    let adminHTML = '';
+    
+    if (state.isOwner || state.isAdmin || state.isModerator) {
+        adminHTML = `
+            <div class="grid grid-cols-2 gap-3" id="adminControls">
+                <button onclick="openMuteModal()" class="p-3 bg-yellow-600 rounded-lg hover:bg-yellow-700">
+                    <i class="fas fa-volume-mute"></i> كتم
+                </button>
+                <button onclick="openKickModal()" class="p-3 bg-orange-600 rounded-lg hover:bg-orange-700">
+                    <i class="fas fa-user-slash"></i> طرد
+                </button>
+                <button onclick="openBanModal()" class="p-3 bg-red-600 rounded-lg hover:bg-red-700">
+                    <i class="fas fa-ban"></i> حظر
+                </button>
+                <button onclick="openPromoteModal()" class="p-3 bg-purple-600 rounded-lg hover:bg-purple-700">
+                    <i class="fas fa-star"></i> ترقية
+                </button>
+                ${(state.isOwner || state.isAdmin || state.isModerator) ? `
+                <button onclick="addPointsToUser()" class="p-3 bg-green-600 rounded-lg hover:bg-green-700 col-span-2">
+                    <i class="fas fa-plus-circle"></i> إضافة نقاط
+                </button>
+                ` : ''}
+                ${(state.isOwner || state.isAdmin || state.isModerator) ? `
+                <button onclick="deleteUserMessages()" class="p-3 bg-red-800 rounded-lg hover:bg-red-900 col-span-2">
+                    <i class="fas fa-trash-alt"></i> حذف جميع رسائله
+                </button>
+                ` : ''}
+            </div>
+        `;
+    }
+    
+    adminControls.innerHTML = adminHTML;
+}
+
+
+
+
+// ═══════════════════════════════════
+//  نجوم الخلفية المتحركة
+// ═══════════════════════════════════
+function createStars() {
+    const bg = document.getElementById('starsBg');
+    if (!bg) return;
+    let html = '';
+    for (let i = 0; i < 80; i++) {
+        const size = Math.random() * 3 + 1;
+        const x = Math.random() * 100;
+        const y = Math.random() * 100;
+        const d = (Math.random() * 3 + 2).toFixed(1);
+        const delay = (Math.random() * 3).toFixed(1);
+        html += `<div class="star" style="width:${size}px;height:${size}px;left:${x}%;top:${y}%;--d:${d}s;--delay:${delay}s"></div>`;
+    }
+    for (let i = 0; i < 5; i++) {
+        const x = Math.random() * 60;
+        const y = Math.random() * 40;
+        const d = (Math.random() * 3 + 3).toFixed(1);
+        const delay = (Math.random() * 8).toFixed(1);
+        html += `<div class="shooting-star" style="left:${x}%;top:${y}%;--d:${d}s;--delay:${delay}s"></div>`;
+    }
+    bg.innerHTML = html;
+}
+createStars();
+
+// ═══════════════════════════════════
+//  نظام الردود (Reply)
+// ═══════════════════════════════════
+let replyData = null;
+
+function setReply(msgId) {
+    const msgs = state.rooms[state.room] || [];
+    const msg = msgs.find(m => m.id === msgId);
+    if (!msg) return;
+    replyData = { id: msg.id, name: msg.name, text: msg.text };
+    document.getElementById('replyPreviewText').innerHTML =
+        `<strong style="color:#fbbf24">${esc(msg.name)}:</strong> ${esc((msg.text||'').slice(0,60))}`;
+    document.getElementById('replyBar').classList.add('show');
+    document.getElementById('msg').focus();
+    // أغلق القائمة
+    document.querySelectorAll('.message-menu').forEach(m => m.classList.add('hidden'));
+}
+
+function cancelReply() {
+    replyData = null;
+    document.getElementById('replyBar').classList.remove('show');
+}
+
+// ═══════════════════════════════════
+//  نظام الـ Reactions
+// ═══════════════════════════════════
+function toggleReactionPicker(msgId, event) {
+    event.stopPropagation();
+    // أغلق كل الـ pickers
+    document.querySelectorAll('.reaction-picker').forEach(p => {
+        if (p.id !== 'rp-' + msgId) p.classList.remove('show');
+    });
+    document.getElementById('rp-' + msgId)?.classList.toggle('show');
+    // أغلق القوائم الأخرى
+    document.querySelectorAll('.message-menu').forEach(m => m.classList.add('hidden'));
+}
+
+function toggleReaction(msgId, emoji) {
+    if (!socket || !state.connected) return;
+    socket.emit('message:react', { messageId: msgId, emoji, room: state.room });
+    // أغلق الـ picker
+    document.getElementById('rp-' + msgId)?.classList.remove('show');
+}
+
+// استقبال الـ reactions من السيرفر
+if (typeof socket !== 'undefined') {
+    socket.on('message:reaction', (data) => {
+        const msgs = state.rooms[data.room] || [];
+        const msg = msgs.find(m => m.id === data.messageId);
+        if (msg) {
+            if (!msg.reactions) msg.reactions = {};
+            if (!msg.reactions[data.emoji]) msg.reactions[data.emoji] = [];
+            const idx = msg.reactions[data.emoji].indexOf(data.userId);
+            if (idx === -1) msg.reactions[data.emoji].push(data.userId);
+            else msg.reactions[data.emoji].splice(idx, 1);
+            render();
+        }
+    });
+}
+
+// ═══════════════════════════════════
+//  مؤشر الكتابة
+// ═══════════════════════════════════
+let typingTimer = null;
+document.addEventListener('DOMContentLoaded', () => {
+    const msgInput = document.getElementById('msg');
+    if (msgInput) {
+        msgInput.addEventListener('input', () => {
+            if (socket && state.connected) {
+                socket.emit('user:typing', { room: state.room, name: state.user?.name });
+                clearTimeout(typingTimer);
+                typingTimer = setTimeout(() => {
+                    socket.emit('user:stopped-typing', { room: state.room });
+                }, 2000);
+            }
+        });
+    }
+});
+
+// ═══════════════════════════════════
+//  تحديث sendMsg لدعم الرد
+// ═══════════════════════════════════
+const _origSendMsg = window.sendMsg;
+window.sendMsg = function() {
+    const msgInput = document.getElementById('msg');
+    const message = msgInput?.value?.trim();
+    if (!message || !state.user || !state.connected) return;
+
+    const messageData = {
+        text: message,
+        room: state.room,
+        replyTo: replyData || null
+    };
+    socket.emit('message:send', messageData);
+    msgInput.value = '';
+    cancelReply();
+};
+
+// إغلاق الـ pickers عند الضغط خارجها
+document.addEventListener('click', (e) => {
+    if (!e.target.closest('.reaction-picker') && !e.target.closest('[onclick*="toggleReactionPicker"]')) {
+        document.querySelectorAll('.reaction-picker').forEach(p => p.classList.remove('show'));
+    }
+});
+
+</script>
+</body>
+</html>
