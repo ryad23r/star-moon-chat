@@ -1,0 +1,9 @@
+node_modules/
+chat_data/users.json
+chat_data/friends.json
+chat_data/messages.json
+chat_data/uploads/
+.env
+*.log
+.DS_Store
+Thumbs.db
